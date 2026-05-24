@@ -23,7 +23,7 @@ app.get('/', async (c) => {
     JOIN sets s ON te.id = s.training_exercise_id
     WHERE t.user_id = ?
     GROUP BY c.id, e.id, t.date
-    ORDER BY c.name, e.name, t.date
+    ORDER BY c.sort_order, c.name, e.name, t.date
   `).bind(userId).all()
   return c.json(results)
 })
