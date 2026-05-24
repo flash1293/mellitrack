@@ -1,0 +1,141 @@
+import { Hono } from 'hono'
+import type { Env } from '../index'
+
+const app = new Hono<{ Bindings: Env }>()
+
+app.get('/', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const { results } = await db.prepare(`
+    SELECT e.id, e.name, e.deleted_at, GROUP_CONCAT(c.name) as category_names, GROUP_CONCAT(c.id) as category_ids
+    FROM exercises e
+    LEFT JOIN exercise_category_mappings m ON e.id = m.exercise_id
+    LEFT JOIN exercise_categories c ON m.category_id = c.id
+    WHERE e.user_id = ?
+    GROUP BY e.id, e.name, e.deleted_at
+    ORDER BY e.name
+  `).bind(userId).all()
+  const exercises = results.map((r: any) => ({
+    ...r,
+    deleted_at: r.deleted_at || null,
+    categories: r.category_ids
+      ? r.category_ids.split(',').map((id: string, i: number) => ({
+          id: parseInt(id),
+          name: r.category_names.split(',')[i],
+        }))
+      : [],
+  }))
+  return c.json(exercises)
+})
+
+app.post('/', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const { name, category_ids } = await c.req.json()
+
+  const { meta } = await db.prepare(
+    'INSERT INTO exercises (name, category_id, user_id) VALUES (?, ?, ?)'
+  ).bind(name, category_ids[0] || 1, userId).run()
+  const exerciseId = meta.last_row_id
+
+  for (const catId of category_ids) {
+    await db.prepare(
+      'INSERT OR IGNORE INTO exercise_category_mappings (exercise_id, category_id) VALUES (?, ?)'
+    ).bind(exerciseId, catId).run()
+  }
+
+  return c.json({ id: exerciseId, success: true })
+})
+
+app.put('/:id', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+  const { name, category_ids } = await c.req.json()
+
+  // Verify ownership
+  const existing = await db.prepare('SELECT id FROM exercises WHERE id = ? AND user_id = ?').bind(id, userId).first()
+  if (!existing) {
+    return c.json({ error: 'Not found' }, 404)
+  }
+
+  await db.prepare('UPDATE exercises SET name = ? WHERE id = ?').bind(name, id).run()
+
+  if (category_ids) {
+    await db.prepare('DELETE FROM exercise_category_mappings WHERE exercise_id = ?').bind(id).run()
+    for (const catId of category_ids) {
+      await db.prepare(
+        'INSERT OR IGNORE INTO exercise_category_mappings (exercise_id, category_id) VALUES (?, ?)'
+      ).bind(id, catId).run()
+    }
+  }
+
+  return c.json({ success: true })
+})
+
+app.delete('/:id', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const id = c.req.param('id')
+
+  const existing = await db.prepare(
+    'SELECT id FROM exercises WHERE id = ? AND user_id = ?'
+  ).bind(id, userId).first()
+  if (!existing) {
+    return c.json({ error: 'Not found' }, 404)
+  }
+
+  const ref = await db.prepare(
+    'SELECT id FROM training_exercises WHERE exercise_id = ? LIMIT 1'
+  ).bind(id).first()
+
+  if (ref) {
+    await db.prepare(
+      'UPDATE exercises SET deleted_at = datetime("now") WHERE id = ?'
+    ).bind(id).run()
+    return c.json({ success: true, deleted: 'soft' })
+  } else {
+    await db.prepare(
+      'DELETE FROM exercise_category_mappings WHERE exercise_id = ?'
+    ).bind(id).run()
+    await db.prepare(
+      'DELETE FROM exercises WHERE id = ?'
+    ).bind(id).run()
+    return c.json({ success: true, deleted: 'hard' })
+  }
+})
+
+app.get('/categories', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const { results } = await db.prepare(
+    'SELECT * FROM exercise_categories WHERE user_id = ? ORDER BY name'
+  ).bind(userId).all()
+  return c.json(results)
+})
+
+app.post('/categories', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const { name } = await c.req.json()
+  const { success } = await db.prepare(
+    'INSERT INTO exercise_categories (name, user_id) VALUES (?, ?)'
+  ).bind(name, userId).run()
+  return c.json({ success })
+})
+
+app.get('/by-category/:categoryId', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const categoryId = c.req.param('categoryId')
+  const { results } = await db.prepare(`
+    SELECT e.id, e.name
+    FROM exercises e
+    JOIN exercise_category_mappings m ON e.id = m.exercise_id
+    WHERE m.category_id = ? AND e.user_id = ? AND e.deleted_at IS NULL
+    ORDER BY e.name
+  `).bind(categoryId, userId).all()
+  return c.json(results)
+})
+
+export default app
