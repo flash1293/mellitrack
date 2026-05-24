@@ -19,7 +19,7 @@ app.get('/', async (c) => {
     JOIN exercise_category_mappings m ON c.id = m.category_id
     JOIN exercises e ON m.exercise_id = e.id
     JOIN training_exercises te ON e.id = te.exercise_id
-    JOIN trainings t ON te.training_id = t.id
+    JOIN trainings t ON te.training_id = t.id AND t.category_id = c.id
     JOIN sets s ON te.id = s.training_exercise_id
     WHERE t.user_id = ?
     GROUP BY c.id, e.id, t.date
