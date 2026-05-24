@@ -8,8 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
 -- Exercise categories
 CREATE TABLE IF NOT EXISTS exercise_categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE,
-  user_id INTEGER
+  name TEXT NOT NULL,
+  user_id INTEGER,
+  UNIQUE(name, user_id)
 );
 
 -- Exercises
