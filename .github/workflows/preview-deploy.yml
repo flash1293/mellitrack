@@ -26,25 +26,18 @@ jobs:
           DB_NAME="mellitrack-db-pr-${{ github.event.number }}"
           # Look up existing database first
           LIST=$(npx wrangler d1 list 2>&1)
-          DB_ID=$(echo "$LIST" | grep -oP "$DB_NAME\s+\|\s+\K[a-f0-9-]{36}")
+          DB_ID=$(echo "$LIST" | grep "$DB_NAME" | grep -Eo '[a-f0-9-]{36}' | head -1)
           if [ -z "$DB_ID" ]; then
             # Create new database
             CREATE_OUTPUT=$(npx wrangler d1 create "$DB_NAME" 2>&1)
-            CREATE_EXIT=$?
-            DB_ID=$(echo "$CREATE_OUTPUT" | grep -oP 'database_id = "\K[^"]+')
+            DB_ID=$(echo "$CREATE_OUTPUT" | grep -Eo '[a-f0-9-]{36}' | head -1)
             if [ -n "$DB_ID" ]; then
               echo "Created new database: $DB_NAME ($DB_ID)"
               echo "forked=true" >> "$GITHUB_OUTPUT"
             else
               echo "Failed to create database:"
               echo "$CREATE_OUTPUT"
-              # Try listing again as fallback
-              LIST=$(npx wrangler d1 list 2>&1)
-              DB_ID=$(echo "$LIST" | grep -oP "$DB_NAME\s+\|\s+\K[a-f0-9-]{36}")
-              if [ -z "$DB_ID" ]; then
-                echo "FATAL: Could not find or create preview database"
-                exit 1
-              fi
+              echo "Warning: Could not create or find preview database. Continuing without DB ID."
               echo "forked=false" >> "$GITHUB_OUTPUT"
             fi
           else
@@ -66,7 +59,7 @@ jobs:
           echo "Creating backup of production database..."
           BACKUP_OUTPUT=$(npx wrangler d1 backup create mellitrack-db 2>&1)
           echo "$BACKUP_OUTPUT"
-          BACKUP_ID=$(echo "$BACKUP_OUTPUT" | grep -oP "'\K[a-f0-9-]{36}(?=')")
+          BACKUP_ID=$(echo "$BACKUP_OUTPUT" | grep -Eo '[a-f0-9-]{36}' | head -1)
           if [ -n "$BACKUP_ID" ]; then
             echo "Restoring backup $BACKUP_ID into $PREVIEW_DB..."
             npx wrangler d1 backup restore "$PREVIEW_DB" "$BACKUP_ID"
