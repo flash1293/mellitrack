@@ -47,20 +47,6 @@ app.post('/', async (c) => {
   return c.json({ id: exerciseId, success: true })
 })
 
-// ⚠️ Specific routes MUST be defined before parameterized ones
-// (e.g. PUT /reorder before PUT /:id, otherwise "reorder" gets caught as an :id parameter → 404)
-app.put('/reorder', async (c) => {
-  const db = c.env.DB
-  const userId = c.get('userId')
-  const { ids } = await c.req.json()
-  for (let i = 0; i < ids.length; i++) {
-    await db.prepare(
-      'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
-    ).bind(i, ids[i], userId).run()
-  }
-  return c.json({ success: true })
-})
-
 app.put('/:id', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
@@ -135,6 +121,18 @@ app.put('/categories/reorder', async (c) => {
   for (let i = 0; i < ids.length; i++) {
     await db.prepare(
       'UPDATE exercise_categories SET sort_order = ? WHERE id = ? AND user_id = ?'
+    ).bind(i, ids[i], userId).run()
+  }
+  return c.json({ success: true })
+})
+
+app.put('/reorder', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const { ids } = await c.req.json()
+  for (let i = 0; i < ids.length; i++) {
+    await db.prepare(
+      'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
     ).bind(i, ids[i], userId).run()
   }
   return c.json({ success: true })
