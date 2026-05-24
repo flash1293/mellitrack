@@ -109,7 +109,7 @@ jobs:
         id: deploy
         run: |
           npx wrangler deploy --config wrangler.preview.toml 2>&1 | tee deploy.log
-          URL=$(grep -oP 'https://[^\s]+' deploy.log | head -1)
+          URL=$(grep -oP 'https://[^\s]+' deploy.log | tail -1)
           if [ -z "$URL" ]; then
             URL="https://mellitrack-pr-${{ github.event.number }}.joereuter.dev"
           fi
