@@ -72,6 +72,25 @@ export default function ExerciseList() {
     )
   }
 
+  const moveCategory = async (index: number, direction: 'up' | 'down') => {
+    const newCats = [...categories]
+    const swap = direction === 'up' ? index - 1 : index + 1
+    if (swap < 0 || swap >= newCats.length) return
+    ;[newCats[index], newCats[swap]] = [newCats[swap], newCats[index]]
+    setCategories(newCats)
+    await api.reorderCategories(newCats.map((c) => c.id))
+  }
+
+  const moveExercise = async (catIndex: number, exIndex: number, direction: 'up' | 'down') => {
+    const cat = grouped[catIndex]
+    const ids = cat.exercises.map((e: any) => e.id)
+    const swap = direction === 'up' ? exIndex - 1 : exIndex + 1
+    if (swap < 0 || swap >= ids.length) return
+    ;[ids[exIndex], ids[swap]] = [ids[swap], ids[exIndex]]
+    await api.reorderExercises(ids)
+    loadData()
+  }
+
   // Group exercises by category for display
   const grouped = categories.map((cat) => ({
     ...cat,
@@ -173,14 +192,28 @@ export default function ExerciseList() {
       )}
 
       <div className="space-y-4">
-        {grouped.map((cat) => (
+        {grouped.map((cat, gi) => (
           <div key={cat.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <h3 className="font-semibold p-4 bg-gray-50 border-b border-gray-100">{cat.name}</h3>
+            <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-100">
+              <h3 className="font-semibold">{cat.name}</h3>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => moveCategory(gi, 'up')}
+                  className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors"
+                  aria-label="Nach oben"
+                >↑</button>
+                <button
+                  onClick={() => moveCategory(gi, 'down')}
+                  className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors"
+                  aria-label="Nach unten"
+                >↓</button>
+              </div>
+            </div>
             {cat.exercises.length === 0 ? (
               <p className="p-4 text-sm text-gray-500">Keine Übungen</p>
             ) : (
               <div className="divide-y divide-gray-100">
-                {cat.exercises.map((ex: any) => (
+                {cat.exercises.map((ex: any, ei: number) => (
                   <div
                     key={`${cat.id}-${ex.id}`}
                     className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
@@ -237,6 +270,16 @@ export default function ExerciseList() {
                           </svg>
                         </button>
                         <div className="flex items-center gap-1 ml-2">
+                          <button
+                            onClick={() => moveExercise(gi, ei, 'up')}
+                            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                            aria-label="Nach oben"
+                          >↑</button>
+                          <button
+                            onClick={() => moveExercise(gi, ei, 'down')}
+                            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                            aria-label="Nach unten"
+                          >↓</button>
                           {ex.deleted_at ? (
                             <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full whitespace-nowrap">
                               Gelöscht

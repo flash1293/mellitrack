@@ -98,20 +98,24 @@ export default function ProgressPage() {
                       </span>
                       <span className="text-xs text-gray-500">{d.category_name || '—'}</span>
                     </div>
-                    <div className="grid grid-cols-[auto_1fr_1fr] gap-x-4 gap-y-1 text-sm">
-                      <span className="text-gray-400 font-medium">Satz</span>
-                      <span className="text-gray-400 font-medium">Gewicht</span>
-                      <span className="text-gray-400 font-medium">Wdh.</span>
-                      {sets.map((s) => (
-                        <span key={`s${s.set_number}-n`} className="text-gray-500">{s.set_number}.</span>
-                      ))}
-                      {sets.map((s) => (
-                        <span key={`s${s.set_number}-w`}>{s.weight > 0 ? `${s.weight} kg` : '—'}</span>
-                      ))}
-                      {sets.map((s) => (
-                        <span key={`s${s.set_number}-r`}>{s.reps > 0 ? s.reps : '—'}</span>
-                      ))}
-                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-gray-400 font-medium">
+                          <th className="text-left pr-4">Satz</th>
+                          <th className="text-left pr-4">Gewicht</th>
+                          <th className="text-left">Wdh.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sets.map((s) => (
+                          <tr key={s.set_number} className="text-gray-700">
+                            <td className="pr-4 py-0.5">{s.set_number}.</td>
+                            <td className="pr-4 py-0.5">{s.weight > 0 ? `${s.weight} kg` : '—'}</td>
+                            <td className="py-0.5">{s.reps > 0 ? s.reps : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )
               })}

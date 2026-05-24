@@ -56,10 +56,11 @@ npm run test:e2e:ui      # Playwright UI mode
 
 ## Architecture Notes
 - **Static assets**: Not served from KV. The build script (`scripts/inline-static.ts`) reads `dist/` and generates `src/server/static-manifest.ts`, which the worker imports and serves from memory. This avoids KV manifest issues.
-- **D1**: Single SQLite database. Migrations are SQL files in `migrations/`.
+- **D1**: Single SQLite database. Migrations are SQL files in `migrations/`. Always create a migration for schema changes — never ALTER TABLE directly on prod. Apply with `npm run db:migrate` (local) or `npm run db:migrate:prod` (prod).
 - **Auth**: `session` cookie contains user ID. Middleware at `src/server/index.ts` verifies it against the `users` table.
 - **Prefill logic**: When creating a new training for a category, the form prefills each exercise's sets from the *last training of that same category* for that exercise. This is handled by `GET /api/trainings/last-category/:categoryId`.
 - **Tombstoning**: Exercises have a `deleted_at` column. Unreferenced exercises are hard-deleted; referenced ones are soft-deleted (tombstoned). Tombstoned exercises don't appear in new training forms but remain in historical data.
+- **Reorder**: Categories and exercises have a `sort_order` column. Up/down arrows in the UI call `PUT /api/exercises/categories/reorder` and `PUT /api/exercises/reorder` with the new ID order.
 
 ## GitHub Actions Workflows
 
