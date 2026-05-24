@@ -29,43 +29,19 @@ jobs:
         id: create-db
         run: |
           DB_NAME="mellitrack-db-pr-${{ github.event.number }}"
-          CF_API="https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database"
-          AUTH="Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
 
-          # Look up existing database via API (wrangler d1 list truncates UUIDs)
-          DB_ID=$(curl -sf -H "$AUTH" "$CF_API" | python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          for db in data.get('result', []):
-              if db['name'] == '$DB_NAME':
-                  print(db['uuid'])
-                  break
-          ")
-
+          DB_ID=$(python3 scripts/d1_api.py list "$DB_NAME")
           if [ -z "$DB_ID" ]; then
             echo "Creating new database: $DB_NAME"
-            # Create via API (wrangler d1 create fails if name already exists)
-            CREATE_RESULT=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"name\":\"$DB_NAME\"}" "$CF_API")
-            DB_ID=$(echo "$CREATE_RESULT" | python3 -c "
-            import json, sys
-            data = json.load(sys.stdin)
-            print(data.get('result', {}).get('uuid', ''))
-            ")
+            DB_ID=$(python3 scripts/d1_api.py create "$DB_NAME")
             if [ -n "$DB_ID" ]; then
               echo "Created new database: $DB_NAME ($DB_ID)"
               echo "forked=true" >> "$GITHUB_OUTPUT"
             else
-              echo "Failed to create database via API, trying wrangler as fallback..."
-              CREATE_OUTPUT=$(npx wrangler d1 create "$DB_NAME" 2>&1)
-              DB_ID=$(echo "$CREATE_OUTPUT" | grep -Eo '[a-f0-9-]{36}' | head -1)
-              if [ -n "$DB_ID" ]; then
-                echo "Created new database via wrangler: $DB_NAME ($DB_ID)"
-                echo "forked=true" >> "$GITHUB_OUTPUT"
-              else
-                echo "Warning: Could not create or find preview database."
-                echo "forked=false" >> "$GITHUB_OUTPUT"
-              fi
+              echo "Warning: Could not create preview database."
+              echo "forked=false" >> "$GITHUB_OUTPUT"
             fi
           else
             echo "Found existing database: $DB_NAME ($DB_ID)"
@@ -73,32 +49,20 @@ jobs:
           fi
           echo "db_id=$DB_ID" >> "$GITHUB_OUTPUT"
           echo "db_name=$DB_NAME" >> "$GITHUB_OUTPUT"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Seed preview database with default user
         if: steps.create-db.outputs.forked == 'true'
         run: |
-          PREVIEW_DB_ID="${{ steps.create-db.outputs.db_id }}"
-          if [ -z "$PREVIEW_DB_ID" ]; then
+          DB_ID="${{ steps.create-db.outputs.db_id }}"
+          if [ -z "$DB_ID" ]; then
             echo "No database ID available, skipping seed"
             exit 0
           fi
-          CF_API="https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database/$PREVIEW_DB_ID/query"
-          AUTH="Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}"
-
-          echo "Seeding default user..."
-          # password: mellitrack123 -> SHA-256 hex hash
-          curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" -d '{"sql":"INSERT OR IGNORE INTO users (id, username, password_hash) VALUES (1, '"'"'default'"'"', '"'"'9361d32cd2deb7c0168d7426fc75787f96827d8864cd8ced7f2b7f6aa46916b8'"'"')"}' "$CF_API" > /dev/null && echo "  ✓ Default user created"
-
-          # Seed default categories so the dashboard has something to show
-          curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" -d '{"sql":"INSERT OR IGNORE INTO exercise_categories (id, name, user_id, sort_order) VALUES (1, '"'"'Oberkörper'"'"', 1, 1), (2, '"'"'Unterkörper'"'"', 1, 2), (3, '"'"'Ganzkörper'"'"', 1, 3)"}' "$CF_API" > /dev/null && echo "  ✓ Default categories created"
-
+          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          echo "Seeding preview database..."
+          python3 scripts/d1_api.py seed "$DB_ID"
           echo "Preview database seeded! Login: default / mellitrack123"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Generate preview wrangler.toml
         run: |
@@ -118,32 +82,19 @@ jobs:
 
       - name: Apply migrations to preview DB
         run: |
-          PREVIEW_DB_ID="${{ steps.create-db.outputs.db_id }}"
-          if [ -z "$PREVIEW_DB_ID" ]; then
+          DB_ID="${{ steps.create-db.outputs.db_id }}"
+          if [ -z "$DB_ID" ]; then
             echo "No database ID available, skipping migrations"
             exit 0
           fi
-          CF_API="https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/d1/database/$PREVIEW_DB_ID/query"
-          AUTH="Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
 
-          # Apply migrations via D1 SQL API (replaces wrangler d1 migrations apply)
           for f in migrations/*.sql; do
             echo "Applying migration: $f"
-            SQL=$(cat "$f")
-            # Escape for JSON and send
-            curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
-              -d "$(python3 -c "
-            import json, sys
-            with open('$f') as fh:
-                sql = fh.read()
-            print(json.dumps({'sql': sql}))
-            ")" "$CF_API" > /dev/null
-            echo "  ✓ $f applied"
+            python3 scripts/d1_api.py query "$DB_ID" "$f"
           done
           echo "All migrations applied successfully!"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Build
         run: npm run build
