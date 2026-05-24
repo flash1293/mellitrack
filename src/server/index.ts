@@ -1,11 +1,11 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { getCookie } from 'hono/cookie'
-import { serveStatic } from 'hono/cloudflare-workers'
 import auth from './routes/auth'
 import exercises from './routes/exercises'
 import trainings from './routes/trainings'
 import progress from './routes/progress'
+import { STATIC_ASSETS } from './static-manifest'
 
 export type Env = {
   DB: D1Database
@@ -24,7 +24,7 @@ app.use('/api/*', cors({
 }))
 
 // Auth middleware for protected routes
-const authMiddleware = async (c, next) => {
+const authMiddleware = async (c: any, next: any) => {
   const session = getCookie(c, 'session')
   if (!session) {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -56,6 +56,23 @@ app.route('/api/trainings', trainings)
 app.route('/api/progress', progress)
 
 // Serve static files for non-API routes
-app.get('*', serveStatic({ root: './' }))
+app.get('*', (c) => {
+  const url = new URL(c.req.url)
+  let path = url.pathname.slice(1) || 'index.html'
+
+  // For client-side routing, fall back to index.html
+  if (!STATIC_ASSETS[path]) {
+    path = 'index.html'
+  }
+
+  const asset = STATIC_ASSETS[path]
+  if (!asset) {
+    return c.text('Not Found', 404)
+  }
+
+  return new Response(asset.content, {
+    headers: { 'content-type': asset.type },
+  })
+})
 
 export default app

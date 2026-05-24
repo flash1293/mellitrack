@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
-import type { Env } from '../index'
+import type { Env, Variables } from '../index'
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 app.get('/', async (c) => {
   const db = c.env.DB
