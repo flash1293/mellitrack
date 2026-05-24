@@ -215,7 +215,7 @@ export default function TrainingForm() {
   if (loading) return <div className="p-4 text-center">Laden...</div>
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4 max-w-2xl w-full overflow-hidden">
       <h2 className="text-xl font-bold">{isEdit ? 'Training bearbeiten' : 'Neues Training'}</h2>
 
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
@@ -271,29 +271,32 @@ export default function TrainingForm() {
 
             <div className="space-y-2">
               {entry.sets.map((set, si) => (
-                <div key={si} className="flex items-center gap-1 min-w-0">
-                  <span className="text-sm text-gray-500 w-10 shrink-0">S{set.set_number}</span>
+                <div key={si} className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] gap-1 items-center">
+                  <span className="text-sm text-gray-500 shrink-0">S{set.set_number}</span>
                   <input
                     type="number"
                     inputMode="decimal"
                     placeholder="kg"
                     value={set.weight}
                     onChange={(e) => updateSet(ei, si, 'weight', e.target.value)}
-                    className={`w-0 min-w-0 flex-1 px-2 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
+                    style={{ minWidth: 0, width: '100%' }}
+                    className={`px-2 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
                       isChanged(set, 'weight') ? 'border-l-4 border-l-blue-500 border-gray-300' : 'border-gray-300'
                     }`}
                   />
-                  <span className="text-sm text-gray-400 shrink-0">×</span>
+                  <span className="text-lg shrink-0">⚖️</span>
                   <input
                     type="number"
                     inputMode="numeric"
                     placeholder="Wdh"
                     value={set.reps}
                     onChange={(e) => updateSet(ei, si, 'reps', e.target.value)}
-                    className={`w-0 min-w-0 flex-1 px-2 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
+                    style={{ minWidth: 0, width: '100%' }}
+                    className={`px-2 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
                       isChanged(set, 'reps') ? 'border-l-4 border-l-blue-500 border-gray-300' : 'border-gray-300'
                     }`}
                   />
+                  <span className="text-lg shrink-0">🔁</span>
                   <button
                     onClick={() => removeSet(ei, si)}
                     className="p-2 text-gray-400 hover:text-red-500 transition-colors shrink-0"
