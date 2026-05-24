@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../api'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import BackgroundSelector, { getCurrentTheme, applyTheme } from './BackgroundSelector'
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
@@ -17,6 +18,10 @@ export default function Layout({ username }: { username: string }) {
     await api.logout()
     window.location.href = '/login'
   }
+
+  useEffect(() => {
+    applyTheme(getCurrentTheme())
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -69,6 +74,9 @@ export default function Layout({ username }: { username: string }) {
                 <span className="font-medium">{item.label}</span>
               </button>
             ))}
+            <div className="border-t border-gray-100 my-2" />
+            <BackgroundSelector />
+            <div className="border-t border-gray-100 my-2" />
             <button
               onClick={handleLogout}
               className="w-full text-left p-3 rounded-lg text-red-600 hover:bg-red-50 flex items-center gap-3 mt-4"
@@ -103,6 +111,9 @@ export default function Layout({ username }: { username: string }) {
               </button>
             ))}
           </nav>
+          <div className="border-t border-gray-100 my-2" />
+          <BackgroundSelector />
+          <div className="border-t border-gray-100 my-2" />
           <button
             onClick={handleLogout}
             className="w-full text-left p-3 rounded-lg text-red-600 hover:bg-red-50 flex items-center gap-3"

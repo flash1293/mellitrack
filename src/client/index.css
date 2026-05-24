@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    min-height: 100%;
+  }
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply text-gray-900;
+    min-height: 100vh;
     -webkit-tap-highlight-color: transparent;
   }
   input, select, button {
@@ -15,4 +19,59 @@
 
 input[type="number"] {
   min-width: 0;
+}
+
+/* ===== Background Themes ===== */
+
+/* Default: light gray */
+.bg-theme-default {
+  background: #f3f4f6;
+}
+
+/* 1. Rosengarten — pink gradient with floral overlay */
+.bg-theme-rosengarten {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 40px,
+      rgba(244, 143, 177, 0.08) 40px,
+      rgba(244, 143, 177, 0.08) 42px
+    ),
+    linear-gradient(135deg, #fce4ec 0%, #f8e8ff 50%, #f3e5f5 100%);
+}
+
+/* 2. Lila Ornamente — purple gradient with swirl-like ornament pattern */
+.bg-theme-lila-ornamente {
+  background:
+    radial-gradient(circle at 20% 50%, rgba(206, 147, 216, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(171, 71, 188, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(149, 117, 205, 0.12) 0%, transparent 45%),
+    linear-gradient(135deg, #f3e5f5 0%, #ede7f6 30%, #e1bee7 70%, #ce93d8 100%);
+}
+
+/* 3. Herzchenregen — pink gradient with heart pattern */
+.bg-theme-herzchenregen {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(240, 98, 146, 0.12) 0%, transparent 30%),
+    radial-gradient(circle at 70% 60%, rgba(244, 143, 177, 0.1) 0%, transparent 35%),
+    radial-gradient(circle at 15% 80%, rgba(248, 187, 208, 0.15) 0%, transparent 30%),
+    radial-gradient(circle at 85% 15%, rgba(240, 98, 146, 0.08) 0%, transparent 35%),
+    linear-gradient(135deg, #fce4ec 0%, #fff0f6 30%, #f8f0ff 70%, #fce4ec 100%);
+}
+
+/* Animated shimmer for all themes */
+.bg-theme-rosengarten,
+.bg-theme-lila-ornamente,
+.bg-theme-herzchenregen {
+  background-attachment: fixed;
+  transition: background 0.5s ease;
+}
+
+/* Content cards keep white background for readability */
+.bg-theme-rosengarten .bg-white,
+.bg-theme-lila-ornamente .bg-white,
+.bg-theme-herzchenregen .bg-white {
+  @apply shadow-sm;
+  backdrop-filter: none;
 }
