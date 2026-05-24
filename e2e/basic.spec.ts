@@ -76,27 +76,11 @@ test.describe('Mellitrack E2E', () => {
     // Verify exercise created
     await expect(page.locator(`text=${exerciseName}`).first()).toBeVisible()
 
-    // Debug: check what the API returns for exercises by category 1
-    const apiCheck = await page.evaluate(async () => {
-      const res = await fetch('/api/exercises/by-category/1', { credentials: 'include' })
-      const data = await res.json()
-      return { status: res.status, count: data.length, names: data.map((e: any) => e.name) }
-    })
-    console.log('Exercises in category 1:', JSON.stringify(apiCheck))
-
     // Navigate to new training directly
     await page.goto('/trainings/new')
     await expect(page.locator('h2:has-text("Neues Training")')).toBeVisible()
 
-    // Debug: check exercises in training form
-    const apiCheck2 = await page.evaluate(async () => {
-      const res = await fetch('/api/exercises/by-category/1', { credentials: 'include' })
-      const data = await res.json()
-      return { status: res.status, count: data.length, names: data.map((e: any) => e.name) }
-    })
-    console.log('Exercises in category 1 (after nav):', JSON.stringify(apiCheck2))
-
-    // Wait for our exercise to appear
+    // Wait for our exercise to appear on the training form
     const exerciseCard = page.locator('.bg-white').filter({ hasText: exerciseName })
     await expect(exerciseCard.first()).toBeVisible({ timeout: 10000 })
 
