@@ -82,7 +82,7 @@ test.describe('Mellitrack E2E', () => {
     await expect(page.locator('h2:has-text("Neues Training")')).toBeVisible()
 
     // Select a category - exercises auto-populate with all sets from last training
-    await page.locator('label:has-text("Kategorie") + select').selectOption({ label: 'Oberkörper' })
+    await page.selectOption('select', { label: 'Oberkörper' })
 
     // Wait for Oberkörper exercises to load
     await expect(page.locator('text=Bankdrücken')).toBeVisible()
@@ -205,17 +205,21 @@ test.describe('Mellitrack E2E', () => {
     const downButtons = page.locator('button[aria-label="Nach unten"]')
     const count = await downButtons.count()
     if (count > 0) {
-      // Listen for console errors / failed requests
-      const failedRequests: string[] = []
-      page.on('requestfailed', (req) => failedRequests.push(req.url()))
+      // Listen for API responses to check the reorder endpoint returns 200
+      const reorderResponses: number[] = []
+      page.on('response', (res) => {
+        if (res.url().includes('/exercises/reorder')) {
+          reorderResponses.push(res.status())
+        }
+      })
 
       await downButtons.first().click()
       // Wait a bit for the request to complete
       await page.waitForTimeout(1000)
 
-      // Check no request failed with 404
-      const reorderFails = failedRequests.filter((url) => url.includes('/reorder'))
-      expect(reorderFails.length).toBe(0)
+      // Check the reorder response was 200, not 404
+      expect(reorderResponses.length).toBeGreaterThan(0)
+      reorderResponses.forEach((status) => expect(status).toBe(200))
 
       // Verify page is still showing exercises without error
       await expect(page.locator('text=Oberkörper')).toBeVisible()
