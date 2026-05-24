@@ -94,13 +94,13 @@ test.describe('Mellitrack E2E', () => {
 
     // New exercise that was never trained gets 1 set prefilled from last-set fallback
     const exerciseCard = page.locator('.bg-white').filter({ hasText: exerciseName })
-    await expect(exerciseCard.locator('text=Satz 1')).toBeVisible()
+    await expect(exerciseCard.locator('text=S1')).toBeVisible()
 
     // Existing exercises in the category should have multiple sets prefilled from last category training
     const existingCard = page.locator('.bg-white').filter({ hasText: 'Bankdrücken' })
-    await expect(existingCard.locator('text=Satz 1')).toBeVisible()
-    await expect(existingCard.locator('text=Satz 2')).toBeVisible()
-    await expect(existingCard.locator('text=Satz 3')).toBeVisible()
+    await expect(existingCard.locator('text=S1')).toBeVisible()
+    await expect(existingCard.locator('text=S2')).toBeVisible()
+    await expect(existingCard.locator('text=S3')).toBeVisible()
 
     // Modify a value
     const firstWeightInput = exerciseCard.locator('input[placeholder="kg"]').first()
@@ -109,7 +109,7 @@ test.describe('Mellitrack E2E', () => {
 
     // Add a set - should copy current values
     await exerciseCard.locator('button:has-text("+ Satz hinzufügen")').click()
-    await expect(exerciseCard.locator('text=Satz 2')).toBeVisible()
+    await expect(exerciseCard.locator('text=S2')).toBeVisible()
     await expect(exerciseCard.locator('input[placeholder="kg"]').nth(1)).toHaveValue('999')
 
     // Save training
