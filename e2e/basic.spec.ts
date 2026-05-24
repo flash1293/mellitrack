@@ -56,6 +56,11 @@ test.describe('Mellitrack E2E', () => {
 
   test('create exercise with multiple categories and training by category', async ({ page }) => {
     const exerciseName = `Test-Übung-${Date.now()}`
+    const errors: string[] = []
+    page.on('console', msg => {
+      if (msg.type() === 'error') errors.push(`[${msg.type()}] ${msg.text()}`)
+    })
+    page.on('pageerror', err => errors.push(`[PAGEERROR] ${err.message}`))
 
     // Login
     await page.goto('/')
@@ -69,28 +74,45 @@ test.describe('Mellitrack E2E', () => {
     await expect(page.locator('text=Oberkörper')).toBeVisible()
 
     // Add new exercise (uses pre-selected Oberkörper category)
-    await page.click('text=+ Übung')
+    await page.click('button:has-text("+ Übung")')
     await page.fill('input[placeholder="Übungsname"]', exerciseName)
     await page.click('button:has-text("Hinzufügen")')
 
     // Should appear in the list
     await expect(page.locator(`text=${exerciseName}`).first()).toBeVisible()
 
-    // Wait a moment for DB consistency before navigating
-    await page.waitForTimeout(500)
-
-    // Navigate to new training
+    // Navigate to training list via sidebar nav
     await page.click('nav >> visible=true >> text=Training')
-    await page.click('text=Neues Training')
+    await expect(page).toHaveURL(/\/trainings/)
+    await expect(page.locator('h2:has-text("Trainings")')).toBeVisible()
+
+    // Click new training
+    await page.click('button:has-text("Neues Training")')
+    await expect(page).toHaveURL(/\/trainings\/new/)
     await expect(page.locator('h2:has-text("Neues Training")')).toBeVisible()
 
-    // The first category (Oberkörper) is selected by default,
-    // exercises auto-populate with all sets from last training
     // Wait for Oberkörper exercises to load
     await expect(page.locator('text=Bankdrücken')).toBeVisible()
 
     // Should see our new exercise too
-    await expect(page.locator(`text=${exerciseName}`)).toBeVisible()
+    const newExercise = page.getByText(exerciseName, { exact: false })
+    try {
+      await expect(newExercise.first()).toBeVisible({ timeout: 8000 })
+    } catch {
+      // Debug info if it fails — dump current state
+      const html = await page.content()
+      const apiErrors = errors.join('\n')
+      const entriesHtml = html.match(/Neues Training[\s\S]{0,2000}/)?.[0] || html.substring(0, 3000)
+      console.log('=== E2E DEBUG ===')
+      console.log('Exercise name:', exerciseName)
+      console.log('Page URL:', page.url())
+      console.log('Console errors:', apiErrors)
+      console.log('Page content around heading:', entriesHtml)
+      throw new Error(
+        `New exercise "${exerciseName}" not visible on training form.\n` +
+        `URL: ${page.url()}\nErrors: ${apiErrors}`
+      )
+    }
 
     // New exercise that was never trained gets 1 set prefilled from last-set fallback
     const exerciseCard = page.locator('.bg-white').filter({ hasText: exerciseName })
