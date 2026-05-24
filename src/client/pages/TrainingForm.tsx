@@ -271,33 +271,32 @@ export default function TrainingForm() {
 
             <div className="space-y-2">
               {entry.sets.map((set, si) => (
-                <div key={si} className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 w-12">Satz {set.set_number}</span>
-                  <span className="text-lg" title="Gewicht (kg)">⚖️</span>
+                <div key={si} className="flex items-center gap-1 min-w-0">
+                  <span className="text-sm text-gray-500 w-10 shrink-0">S{set.set_number}</span>
                   <input
                     type="number"
                     inputMode="decimal"
                     placeholder="kg"
                     value={set.weight}
                     onChange={(e) => updateSet(ei, si, 'weight', e.target.value)}
-                    className={`flex-1 px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
+                    className={`w-0 min-w-0 flex-1 px-2 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
                       isChanged(set, 'weight') ? 'border-l-4 border-l-blue-500 border-gray-300' : 'border-gray-300'
                     }`}
                   />
-                  <span className="text-lg" title="Wiederholungen">🔁</span>
+                  <span className="text-sm text-gray-400 shrink-0">×</span>
                   <input
                     type="number"
                     inputMode="numeric"
                     placeholder="Wdh"
                     value={set.reps}
                     onChange={(e) => updateSet(ei, si, 'reps', e.target.value)}
-                    className={`flex-1 px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
+                    className={`w-0 min-w-0 flex-1 px-2 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none ${
                       isChanged(set, 'reps') ? 'border-l-4 border-l-blue-500 border-gray-300' : 'border-gray-300'
                     }`}
                   />
                   <button
                     onClick={() => removeSet(ei, si)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    className="p-2 text-gray-400 hover:text-red-500 transition-colors shrink-0"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
