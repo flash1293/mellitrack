@@ -84,9 +84,8 @@ test.describe('Mellitrack E2E', () => {
     await page.click('text=Neues Training')
     await expect(page.locator('h2:has-text("Neues Training")')).toBeVisible()
 
-    // Select a category - exercises auto-populate with all sets from last training
-    await page.selectOption('select', '1')
-
+    // The first category (Oberkörper) is selected by default,
+    // exercises auto-populate with all sets from last training
     // Wait for Oberkörper exercises to load
     await expect(page.locator('text=Bankdrücken')).toBeVisible()
 
