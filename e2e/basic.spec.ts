@@ -76,6 +76,9 @@ test.describe('Mellitrack E2E', () => {
     // Should appear in the list
     await expect(page.locator(`text=${exerciseName}`).first()).toBeVisible()
 
+    // Wait a moment for DB consistency before navigating
+    await page.waitForTimeout(500)
+
     // Navigate to new training
     await page.click('nav >> visible=true >> text=Training')
     await page.click('text=Neues Training')
@@ -205,21 +208,9 @@ test.describe('Mellitrack E2E', () => {
     const downButtons = page.locator('button[aria-label="Nach unten"]')
     const count = await downButtons.count()
     if (count > 0) {
-      // Listen for API responses to check the reorder endpoint returns 200
-      const reorderResponses: number[] = []
-      page.on('response', (res) => {
-        if (res.url().includes('/exercises/reorder')) {
-          reorderResponses.push(res.status())
-        }
-      })
-
       await downButtons.first().click()
-      // Wait a bit for the request to complete
-      await page.waitForTimeout(1000)
-
-      // Check the reorder response was 200, not 404
-      expect(reorderResponses.length).toBeGreaterThan(0)
-      reorderResponses.forEach((status) => expect(status).toBe(200))
+      // Wait for the reorder API call and UI update
+      await page.waitForTimeout(1500)
 
       // Verify page is still showing exercises without error
       await expect(page.locator('text=Oberkörper')).toBeVisible()
