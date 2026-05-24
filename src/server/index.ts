@@ -1,0 +1,61 @@
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import { getCookie } from 'hono/cookie'
+import { serveStatic } from 'hono/cloudflare-workers'
+import auth from './routes/auth'
+import exercises from './routes/exercises'
+import trainings from './routes/trainings'
+import progress from './routes/progress'
+
+export type Env = {
+  DB: D1Database
+  APP_PASSWORD: string
+}
+
+export type Variables = {
+  userId: number
+}
+
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
+
+app.use('/api/*', cors({
+  origin: '*',
+  credentials: true,
+}))
+
+// Auth middleware for protected routes
+const authMiddleware = async (c, next) => {
+  const session = getCookie(c, 'session')
+  if (!session) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  const userId = parseInt(session, 10)
+  if (isNaN(userId)) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  // Verify user exists
+  const db = c.env.DB
+  const user = await db.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first()
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  c.set('userId', userId)
+  await next()
+}
+
+app.use('/api/exercises/*', authMiddleware)
+app.use('/api/trainings/*', authMiddleware)
+app.use('/api/progress/*', authMiddleware)
+
+app.route('/api/auth', auth)
+app.route('/api/exercises', exercises)
+app.route('/api/trainings', trainings)
+app.route('/api/progress', progress)
+
+// Serve static files for non-API routes
+app.get('*', serveStatic({ root: './' }))
+
+export default app
