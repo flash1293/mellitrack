@@ -87,20 +87,34 @@ export default function ProgressPage() {
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <h3 className="font-semibold p-4 border-b border-gray-100">Historie</h3>
             <div className="divide-y divide-gray-100">
-              {data.slice().reverse().map((d, i) => (
-                <div key={i} className="p-4 flex items-center justify-between">
-                  <div>
-                    <span className="font-medium">
-                      {new Date(d.date).toLocaleDateString('de-DE')}
-                    </span>
-                    <p className="text-xs text-gray-500">{d.category_name || '—'}</p>
+              {data.slice().reverse().map((d, i) => {
+                const sets: { set_number: number; weight: number; reps: number }[] =
+                  typeof d.sets === 'string' ? JSON.parse(d.sets) : d.sets || []
+                return (
+                  <div key={i} className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">
+                        {new Date(d.date).toLocaleDateString('de-DE')}
+                      </span>
+                      <span className="text-xs text-gray-500">{d.category_name || '—'}</span>
+                    </div>
+                    <div className="grid grid-cols-[auto_1fr_1fr] gap-x-4 gap-y-1 text-sm">
+                      <span className="text-gray-400 font-medium">Satz</span>
+                      <span className="text-gray-400 font-medium">Gewicht</span>
+                      <span className="text-gray-400 font-medium">Wdh.</span>
+                      {sets.map((s) => (
+                        <span key={`s${s.set_number}-n`} className="text-gray-500">{s.set_number}.</span>
+                      ))}
+                      {sets.map((s) => (
+                        <span key={`s${s.set_number}-w`}>{s.weight > 0 ? `${s.weight} kg` : '—'}</span>
+                      ))}
+                      {sets.map((s) => (
+                        <span key={`s${s.set_number}-r`}>{s.reps > 0 ? s.reps : '—'}</span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-right text-sm">
-                    <p>Ø {d.avg_weight?.toFixed(1)} kg</p>
-                    <p className="text-gray-500">{d.total_reps} Wdh. in {d.set_count} Sätzen</p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </>
