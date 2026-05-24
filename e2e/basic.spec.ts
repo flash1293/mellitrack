@@ -71,11 +71,11 @@ test.describe('Mellitrack E2E', () => {
     // Add new exercise with multiple categories
     await page.click('text=+ Übung')
     await page.fill('input[placeholder="Übungsname"]', exerciseName)
-    await page.click(`button:has-text("Oberkörper")`)
+    // First category (Oberkörper) is pre-selected, so only add Unterkörper
     await page.click(`button:has-text("Unterkörper")`)
     await page.click('button:has-text("Hinzufügen")')
 
-    // Should appear in both categories
+    // Should appear in the list
     await expect(page.locator(`text=${exerciseName}`).first()).toBeVisible()
 
     // Navigate to new training
@@ -158,10 +158,9 @@ test.describe('Mellitrack E2E', () => {
     // Navigate to exercises
     await page.click('nav >> visible=true >> text=Übungen')
 
-    // Add new exercise
+    // Add new exercise (Oberkörper is pre-selected, just fill name and submit)
     await page.click('text=+ Übung')
     await page.fill('input[placeholder="Übungsname"]', originalName)
-    await page.click(`button:has-text("Oberkörper")`)
     await page.click('button:has-text("Hinzufügen")')
 
     // Find the exercise and click edit
