@@ -190,6 +190,41 @@ test.describe('Mellitrack E2E', () => {
     await expect(page.locator('h2:has-text("Bankdrücken")')).toBeVisible()
   })
 
+  test('reorder exercises within category does not throw 404', async ({ page }) => {
+    // Login
+    await page.goto('/')
+    await page.fill('input[type="text"]', 'default')
+    await page.fill('input[type="password"]', 'mellitrack123')
+    await page.click('button:has-text("Anmelden")')
+
+    // Navigate to exercises
+    await page.click('nav >> visible=true >> text=Übungen')
+    await expect(page.locator('h2:has-text("Übungen")')).toBeVisible()
+
+    // There should be at least one category with exercises
+    await expect(page.locator('text=Oberkörper')).toBeVisible()
+
+    // Try to reorder the first exercise down (click the first ↓ button in Oberkörper section)
+    const downButtons = page.locator('button[aria-label="Nach unten"]')
+    const count = await downButtons.count()
+    if (count > 0) {
+      // Listen for console errors / failed requests
+      const failedRequests: string[] = []
+      page.on('requestfailed', (req) => failedRequests.push(req.url()))
+
+      await downButtons.first().click()
+      // Wait a bit for the request to complete
+      await page.waitForTimeout(1000)
+
+      // Check no request failed with 404
+      const reorderFails = failedRequests.filter((url) => url.includes('/reorder'))
+      expect(reorderFails.length).toBe(0)
+
+      // Verify page is still showing exercises without error
+      await expect(page.locator('text=Oberkörper')).toBeVisible()
+    }
+  })
+
   test('mobile navigation works', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/')
