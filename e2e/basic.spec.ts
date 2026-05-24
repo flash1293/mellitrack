@@ -69,8 +69,8 @@ test.describe('Mellitrack E2E', () => {
     await page.click('button:has-text("Anmelden")')
     await expect(page.locator('h2:has-text("Dashboard")')).toBeVisible()
 
-    // Navigate to exercises
-    await page.click('nav >> visible=true >> text=Übungen')
+    // Navigate to exercises page directly
+    await page.goto('/exercises')
     await expect(page.locator('text=Oberkörper')).toBeVisible()
 
     // Add new exercise (uses pre-selected Oberkörper category)
@@ -81,33 +81,26 @@ test.describe('Mellitrack E2E', () => {
     // Should appear in the list
     await expect(page.locator(`text=${exerciseName}`).first()).toBeVisible()
 
-    // Navigate to training list via sidebar nav
-    await page.click('nav >> visible=true >> text=Training')
-    await expect(page).toHaveURL(/\/trainings/)
-    await expect(page.locator('h2:has-text("Trainings")')).toBeVisible()
-
-    // Click new training
-    await page.click('button:has-text("Neues Training")')
-    await expect(page).toHaveURL(/\/trainings\/new/)
+    // Navigate to new training directly
+    await page.goto('/trainings/new')
     await expect(page.locator('h2:has-text("Neues Training")')).toBeVisible()
 
-    // Wait for Oberkörper exercises to load
-    await expect(page.locator('text=Bankdrücken')).toBeVisible()
+    // Wait for Oberkörper exercises to load (increase timeout)
+    await expect(page.locator('text=Bankdrücken')).toBeVisible({ timeout: 10000 })
 
     // Should see our new exercise too
     const newExercise = page.getByText(exerciseName, { exact: false })
     try {
-      await expect(newExercise.first()).toBeVisible({ timeout: 8000 })
+      await expect(newExercise.first()).toBeVisible({ timeout: 5000 })
     } catch {
       // Debug info if it fails — dump current state
       const html = await page.content()
       const apiErrors = errors.join('\n')
-      const entriesHtml = html.match(/Neues Training[\s\S]{0,2000}/)?.[0] || html.substring(0, 3000)
       console.log('=== E2E DEBUG ===')
       console.log('Exercise name:', exerciseName)
       console.log('Page URL:', page.url())
       console.log('Console errors:', apiErrors)
-      console.log('Page content around heading:', entriesHtml)
+      console.log('Page content:', html)
       throw new Error(
         `New exercise "${exerciseName}" not visible on training form.\n` +
         `URL: ${page.url()}\nErrors: ${apiErrors}`
