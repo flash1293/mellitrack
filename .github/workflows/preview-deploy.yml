@@ -1,0 +1,129 @@
+name: Preview Deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+concurrency:
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Create or get preview D1 database
+        id: create-db
+        run: |
+          DB_NAME="mellitrack-db-pr-${{ github.event.number }}"
+          # Try to create a new database
+          CREATE_OUTPUT=$(npx wrangler d1 create "$DB_NAME" 2>&1) || true
+          echo "$CREATE_OUTPUT"
+          DB_ID=$(echo "$CREATE_OUTPUT" | grep -oP 'database_id = "\K[^"]+')
+          if [ -z "$DB_ID" ]; then
+            # Database already exists — look it up
+            LIST=$(npx wrangler d1 list 2>&1)
+            DB_ID=$(echo "$LIST" | grep -oP "$DB_NAME\s+\|\s+\K[a-f0-9-]{36}")
+            echo "forked=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "forked=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "db_id=$DB_ID" >> "$GITHUB_OUTPUT"
+          echo "db_name=$DB_NAME" >> "$GITHUB_OUTPUT"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Fork production data into preview database
+        if: steps.create-db.outputs.forked == 'true'
+        run: |
+          PREVIEW_DB="${{ steps.create-db.outputs.db_name }}"
+          echo "Creating backup of production database..."
+          BACKUP_OUTPUT=$(npx wrangler d1 backup create mellitrack-db 2>&1)
+          echo "$BACKUP_OUTPUT"
+          BACKUP_ID=$(echo "$BACKUP_OUTPUT" | grep -oP "'\K[a-f0-9-]{36}(?=')")
+          if [ -n "$BACKUP_ID" ]; then
+            echo "Restoring backup $BACKUP_ID into $PREVIEW_DB..."
+            npx wrangler d1 backup restore "$PREVIEW_DB" "$BACKUP_ID"
+          else
+            echo "Warning: Could not create production backup. Preview DB will be empty (schema only)."
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Apply migrations to preview DB
+        run: npx wrangler d1 migrations apply "${{ steps.create-db.outputs.db_name }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Generate preview wrangler.toml
+        run: |
+          cat > wrangler.preview.toml <<EOF
+          name = "mellitrack-pr-${{ github.event.number }}"
+          main = "src/server/index.ts"
+          compatibility_date = "2024-05-12"
+
+          [vars]
+          APP_PASSWORD = "CHANGEME"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "${{ steps.create-db.outputs.db_name }}"
+          database_id = "${{ steps.create-db.outputs.db_id }}"
+          EOF
+
+      - name: Build
+        run: npm run build
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy preview worker
+        id: deploy
+        run: |
+          npx wrangler deploy --config wrangler.preview.toml 2>&1 | tee deploy.log
+          URL=$(grep -oP 'https://[^\s]+' deploy.log | head -1)
+          if [ -z "$URL" ]; then
+            URL="https://mellitrack-pr-${{ github.event.number }}.joereuter.dev"
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            const body = `🚀 Preview deployed: ${url}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('🚀 Preview deployed:'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
