@@ -22,7 +22,7 @@ export default function Layout({ username }: { username: string }) {
     <div className="min-h-screen flex flex-col">
       {/* Mobile header */}
       <header className="bg-blue-600 text-white p-4 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-lg font-bold">Mellitrack</h1>
+        <h1 className="text-lg font-bold">❤️ Mellitrack</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm hidden sm:inline">{username}</span>
           <button
