@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
-import type { Env } from '../index'
+import type { Env, Variables } from '../index'
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 app.get('/', async (c) => {
   const db = c.env.DB
@@ -101,7 +101,7 @@ app.get('/last-category/:categoryId', async (c) => {
   `).bind(categoryId, userId, categoryId, userId).all()
 
   const grouped: Record<number, any> = {}
-  for (const row of exercises || []) {
+  for (const row of (exercises || []) as any[]) {
     if (!grouped[row.exercise_id]) {
       grouped[row.exercise_id] = {
         exercise_id: row.exercise_id,

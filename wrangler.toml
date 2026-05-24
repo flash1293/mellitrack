@@ -8,7 +8,8 @@ APP_PASSWORD = "mellitrack123"
 [[d1_databases]]
 binding = "DB"
 database_name = "mellitrack-db"
-database_id = "local-mellitrack-db"
+database_id = "b78f0f34-2953-45b1-9a79-fba2e1e99e61"
 
-[site]
-bucket = "./dist"
+[[routes]]
+pattern = "mellitrack.joereuter.dev"
+custom_domain = true
