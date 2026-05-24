@@ -50,20 +50,6 @@ jobs:
           echo "db_id=$DB_ID" >> "$GITHUB_OUTPUT"
           echo "db_name=$DB_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Seed preview database with default user
-        if: steps.create-db.outputs.forked == 'true'
-        run: |
-          DB_ID="${{ steps.create-db.outputs.db_id }}"
-          if [ -z "$DB_ID" ]; then
-            echo "No database ID available, skipping seed"
-            exit 0
-          fi
-          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
-          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
-          echo "Seeding preview database..."
-          python3 scripts/d1_api.py seed "$DB_ID"
-          echo "Preview database seeded! Login: default / mellitrack123"
-
       - name: Generate preview wrangler.toml
         run: |
           cat > wrangler.preview.toml <<EOF
@@ -95,6 +81,20 @@ jobs:
             python3 scripts/d1_api.py query "$DB_ID" "$f"
           done
           echo "All migrations applied successfully!"
+
+      - name: Seed preview database with default user
+        if: steps.create-db.outputs.forked == 'true'
+        run: |
+          DB_ID="${{ steps.create-db.outputs.db_id }}"
+          if [ -z "$DB_ID" ]; then
+            echo "No database ID available, skipping seed"
+            exit 0
+          fi
+          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          echo "Seeding preview database..."
+          python3 scripts/d1_api.py seed "$DB_ID"
+          echo "Preview database seeded! Login: default / mellitrack123"
 
       - name: Build
         run: npm run build
