@@ -13,7 +13,7 @@ app.get('/', async (c) => {
     LEFT JOIN exercise_categories c ON m.category_id = c.id
     WHERE e.user_id = ?
     GROUP BY e.id, e.name, e.deleted_at
-    ORDER BY e.name
+    ORDER BY e.sort_order, e.name
   `).bind(userId).all()
   const exercises = results.map((r: any) => ({
     ...r,
@@ -34,8 +34,8 @@ app.post('/', async (c) => {
   const { name, category_ids } = await c.req.json()
 
   const { meta } = await db.prepare(
-    'INSERT INTO exercises (name, category_id, user_id) VALUES (?, ?, ?)'
-  ).bind(name, category_ids[0] || 1, userId).run()
+    'INSERT INTO exercises (name, category_id, user_id, sort_order) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercises WHERE user_id = ?))'
+  ).bind(name, category_ids[0] || 1, userId, userId).run()
   const exerciseId = meta.last_row_id
 
   for (const catId of category_ids) {
@@ -109,9 +109,33 @@ app.get('/categories', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const { results } = await db.prepare(
-    'SELECT * FROM exercise_categories WHERE user_id = ? ORDER BY name'
+    'SELECT * FROM exercise_categories WHERE user_id = ? ORDER BY sort_order, name'
   ).bind(userId).all()
   return c.json(results)
+})
+
+app.put('/categories/reorder', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const { ids } = await c.req.json()
+  for (let i = 0; i < ids.length; i++) {
+    await db.prepare(
+      'UPDATE exercise_categories SET sort_order = ? WHERE id = ? AND user_id = ?'
+    ).bind(i, ids[i], userId).run()
+  }
+  return c.json({ success: true })
+})
+
+app.put('/reorder', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const { ids } = await c.req.json()
+  for (let i = 0; i < ids.length; i++) {
+    await db.prepare(
+      'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
+    ).bind(i, ids[i], userId).run()
+  }
+  return c.json({ success: true })
 })
 
 app.post('/categories', async (c) => {
@@ -119,8 +143,8 @@ app.post('/categories', async (c) => {
   const userId = c.get('userId')
   const { name } = await c.req.json()
   const { success } = await db.prepare(
-    'INSERT INTO exercise_categories (name, user_id) VALUES (?, ?)'
-  ).bind(name, userId).run()
+    'INSERT INTO exercise_categories (name, user_id, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercise_categories WHERE user_id = ?))'
+  ).bind(name, userId, userId).run()
   return c.json({ success })
 })
 
@@ -133,7 +157,7 @@ app.get('/by-category/:categoryId', async (c) => {
     FROM exercises e
     JOIN exercise_category_mappings m ON e.id = m.exercise_id
     WHERE m.category_id = ? AND e.user_id = ? AND e.deleted_at IS NULL
-    ORDER BY e.name
+    ORDER BY e.sort_order, e.name
   `).bind(categoryId, userId).all()
   return c.json(results)
 })

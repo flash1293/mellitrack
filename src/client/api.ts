@@ -42,6 +42,10 @@ export const api = {
   getCategories: () => fetchApi('/exercises/categories'),
   createCategory: (name: string) =>
     fetchApi('/exercises/categories', { method: 'POST', body: JSON.stringify({ name }) }),
+  reorderCategories: (ids: number[]) =>
+    fetchApi('/exercises/categories/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
+  reorderExercises: (ids: number[]) =>
+    fetchApi('/exercises/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
   getExercisesByCategory: (categoryId: number) => fetchApi(`/exercises/by-category/${categoryId}`),
 
   getTrainings: () => fetchApi('/trainings'),

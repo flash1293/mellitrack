@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS exercise_categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   user_id INTEGER,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   UNIQUE(name, user_id)
 );
 
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS exercises (
   category_id INTEGER,
   user_id INTEGER,
   deleted_at TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (category_id) REFERENCES exercise_categories(id)
 );
 
