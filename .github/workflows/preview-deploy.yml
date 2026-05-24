@@ -34,13 +34,13 @@ jobs:
 
           # Look up existing database via API (wrangler d1 list truncates UUIDs)
           DB_ID=$(curl -sf -H "$AUTH" "$CF_API" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for db in data.get('result', []):
-    if db['name'] == '$DB_NAME':
-        print(db['uuid'])
-        break
-")
+          import json, sys
+          data = json.load(sys.stdin)
+          for db in data.get('result', []):
+              if db['name'] == '$DB_NAME':
+                  print(db['uuid'])
+                  break
+          ")
 
           if [ -z "$DB_ID" ]; then
             echo "Creating new database: $DB_NAME"
@@ -48,10 +48,10 @@ for db in data.get('result', []):
             CREATE_RESULT=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
               -d "{\"name\":\"$DB_NAME\"}" "$CF_API")
             DB_ID=$(echo "$CREATE_RESULT" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-print(data.get('result', {}).get('uuid', ''))
-")
+            import json, sys
+            data = json.load(sys.stdin)
+            print(data.get('result', {}).get('uuid', ''))
+            ")
             if [ -n "$DB_ID" ]; then
               echo "Created new database: $DB_NAME ($DB_ID)"
               echo "forked=true" >> "$GITHUB_OUTPUT"
@@ -133,11 +133,11 @@ print(data.get('result', {}).get('uuid', ''))
             # Escape for JSON and send
             curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
               -d "$(python3 -c "
-import json, sys
-with open('$f') as fh:
-    sql = fh.read()
-print(json.dumps({'sql': sql}))
-")" "$CF_API" > /dev/null
+            import json, sys
+            with open('$f') as fh:
+                sql = fh.read()
+            print(json.dumps({'sql': sql}))
+            ")" "$CF_API" > /dev/null
             echo "  ✓ $f applied"
           done
           echo "All migrations applied successfully!"
