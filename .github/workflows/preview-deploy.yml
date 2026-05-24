@@ -46,12 +46,12 @@ jobs:
         run: |
           PREVIEW_DB="${{ steps.create-db.outputs.db_name }}"
           echo "Creating backup of production database..."
-          BACKUP_OUTPUT=$(npx wrangler d1 backup create mellitrack-db 2>&1)
+          BACKUP_OUTPUT=$(npx wrangler d1 backup create mellitrack-db 2>&1) || true
           echo "$BACKUP_OUTPUT"
           BACKUP_ID=$(echo "$BACKUP_OUTPUT" | grep -oP "'\K[a-f0-9-]{36}(?=')")
           if [ -n "$BACKUP_ID" ]; then
             echo "Restoring backup $BACKUP_ID into $PREVIEW_DB..."
-            npx wrangler d1 backup restore "$PREVIEW_DB" "$BACKUP_ID"
+            npx wrangler d1 backup restore "$PREVIEW_DB" "$BACKUP_ID" || true
           else
             echo "Warning: Could not create production backup. Preview DB will be empty (schema only)."
           fi
