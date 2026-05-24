@@ -28,22 +28,19 @@ jobs:
       - name: Create or get preview D1 database
         id: create-db
         run: |
-          set +e
           DB_NAME="mellitrack-db-pr-${{ github.event.number }}"
-          # Look up existing database first
-          LIST=$(npx wrangler d1 list 2>&1)
-          DB_ID=$(echo "$LIST" | grep "$DB_NAME" | grep -Eo '[a-f0-9-]{36}' | head -1)
+          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+
+          DB_ID=$(python3 scripts/d1_api.py list "$DB_NAME")
           if [ -z "$DB_ID" ]; then
-            # Create new database
-            CREATE_OUTPUT=$(npx wrangler d1 create "$DB_NAME" 2>&1)
-            DB_ID=$(echo "$CREATE_OUTPUT" | grep -Eo '[a-f0-9-]{36}' | head -1)
+            echo "Creating new database: $DB_NAME"
+            DB_ID=$(python3 scripts/d1_api.py create "$DB_NAME")
             if [ -n "$DB_ID" ]; then
               echo "Created new database: $DB_NAME ($DB_ID)"
               echo "forked=true" >> "$GITHUB_OUTPUT"
             else
-              echo "Failed to create database:"
-              echo "$CREATE_OUTPUT"
-              echo "Warning: Could not create or find preview database. Continuing without DB ID."
+              echo "Warning: Could not create preview database."
               echo "forked=false" >> "$GITHUB_OUTPUT"
             fi
           else
@@ -52,30 +49,20 @@ jobs:
           fi
           echo "db_id=$DB_ID" >> "$GITHUB_OUTPUT"
           echo "db_name=$DB_NAME" >> "$GITHUB_OUTPUT"
-          set -e
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Fork production data into preview database
+      - name: Seed preview database with default user
         if: steps.create-db.outputs.forked == 'true'
         run: |
-          set +e
-          PREVIEW_DB="${{ steps.create-db.outputs.db_name }}"
-          echo "Creating backup of production database..."
-          BACKUP_OUTPUT=$(npx wrangler d1 backup create mellitrack-db 2>&1)
-          echo "$BACKUP_OUTPUT"
-          BACKUP_ID=$(echo "$BACKUP_OUTPUT" | grep -Eo '[a-f0-9-]{36}' | head -1)
-          if [ -n "$BACKUP_ID" ]; then
-            echo "Restoring backup $BACKUP_ID into $PREVIEW_DB..."
-            npx wrangler d1 backup restore "$PREVIEW_DB" "$BACKUP_ID"
-          else
-            echo "Warning: Could not create production backup. Preview DB will be empty (schema only)."
+          DB_ID="${{ steps.create-db.outputs.db_id }}"
+          if [ -z "$DB_ID" ]; then
+            echo "No database ID available, skipping seed"
+            exit 0
           fi
-          set -e
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          echo "Seeding preview database..."
+          python3 scripts/d1_api.py seed "$DB_ID"
+          echo "Preview database seeded! Login: default / mellitrack123"
 
       - name: Generate preview wrangler.toml
         run: |
@@ -94,10 +81,20 @@ jobs:
           EOF
 
       - name: Apply migrations to preview DB
-        run: npx wrangler d1 migrations apply "${{ steps.create-db.outputs.db_name }}" --config wrangler.preview.toml
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          DB_ID="${{ steps.create-db.outputs.db_id }}"
+          if [ -z "$DB_ID" ]; then
+            echo "No database ID available, skipping migrations"
+            exit 0
+          fi
+          export CF_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+
+          for f in migrations/*.sql; do
+            echo "Applying migration: $f"
+            python3 scripts/d1_api.py query "$DB_ID" "$f"
+          done
+          echo "All migrations applied successfully!"
 
       - name: Build
         run: npm run build
@@ -109,7 +106,8 @@ jobs:
         id: deploy
         run: |
           npx wrangler deploy --config wrangler.preview.toml 2>&1 | tee deploy.log
-          URL=$(grep -oP 'https://[^\s]+' deploy.log | tail -1)
+          # Extract the deployed worker URL (contains *.workers.dev)
+          URL=$(grep -oE 'https://[a-z0-9-]+\.workers\.dev' deploy.log | tail -1)
           if [ -z "$URL" ]; then
             URL="https://mellitrack-pr-${{ github.event.number }}.joereuter.dev"
           fi
