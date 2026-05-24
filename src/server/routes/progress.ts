@@ -43,7 +43,11 @@ app.get('/:exerciseId', async (c) => {
       AVG(s.weight) as avg_weight,
       MAX(s.weight) as max_weight,
       SUM(s.reps) as total_reps,
-      COUNT(s.id) as set_count
+      COUNT(s.id) as set_count,
+      json_group_array(
+        json_object('set_number', s.set_number, 'weight', s.weight, 'reps', s.reps)
+        ORDER BY s.set_number
+      ) as sets
     FROM trainings t
     JOIN training_exercises te ON t.id = te.training_id
     JOIN exercises e ON te.exercise_id = e.id
