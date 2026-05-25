@@ -77,15 +77,27 @@ app.get('/last-category/:categoryId', async (c) => {
   const categoryId = Number(c.req.param('categoryId'))
 
   // Return ALL exercises in the category, each with their last sets from a category training
+  // Ordered by: last training's exercise order first, then alphabetically for new exercises
   const { results: exercises } = await db.prepare(`
     SELECT
       e.id as exercise_id,
       e.name as exercise_name,
       s.set_number,
       s.weight,
-      s.reps
+      s.reps,
+      te_order.id as te_order_id
     FROM exercises e
     JOIN exercise_category_mappings m ON e.id = m.exercise_id
+    LEFT JOIN (
+      SELECT te.exercise_id, te.id
+      FROM training_exercises te
+      WHERE te.training_id = (
+        SELECT t.id FROM trainings t
+        WHERE t.category_id = ? AND t.user_id = ?
+        ORDER BY t.date DESC, t.id DESC
+        LIMIT 1
+      )
+    ) te_order ON te_order.exercise_id = e.id
     LEFT JOIN (
       SELECT
         te.exercise_id,
@@ -97,8 +109,12 @@ app.get('/last-category/:categoryId', async (c) => {
     ) latest ON latest.exercise_id = e.id
     LEFT JOIN sets s ON s.training_exercise_id = latest.last_te_id
     WHERE m.category_id = ? AND e.user_id = ? AND e.deleted_at IS NULL
-    ORDER BY e.name, s.set_number
-  `).bind(categoryId, userId, categoryId, userId).all()
+    ORDER BY
+      CASE WHEN te_order.id IS NULL THEN 1 ELSE 0 END,
+      te_order.id,
+      e.name,
+      s.set_number
+  `).bind(categoryId, userId, categoryId, userId, categoryId, userId).all()
 
   const grouped: Record<number, any> = {}
   for (const row of (exercises || []) as any[]) {

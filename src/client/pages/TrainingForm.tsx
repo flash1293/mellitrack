@@ -88,38 +88,64 @@ export default function TrainingForm() {
     if (loadingCategoryRef.current !== categoryId) return
 
     const newEntries: ExerciseEntry[] = []
+    const processedIds = new Set<number>()
 
-    for (const ex of exercises) {
-      const lastEx = lastTraining?.find((le: any) => le.exercise_id === ex.id)
-      if (lastEx && lastEx.sets && lastEx.sets.length > 0) {
-        newEntries.push({
-          exercise_id: ex.id,
-          exercise_name: ex.name,
-          sets: lastEx.sets.map((s: any, i: number) => ({
-            set_number: i + 1,
-            weight: s.weight?.toString() ?? '',
-            reps: s.reps?.toString() ?? '',
-            prefilled_weight: s.weight?.toString() ?? '',
-            prefilled_reps: s.reps?.toString() ?? '',
-            touchedWeight: false,
-            touchedReps: false,
-          })),
-        })
-      } else {
-        newEntries.push({
-          exercise_id: ex.id,
-          exercise_name: ex.name,
-          sets: [{
-            set_number: 1,
-            weight: '',
-            reps: '',
-            prefilled_weight: '',
-            prefilled_reps: '',
-            touchedWeight: false,
-            touchedReps: false,
-          }],
-        })
+    // First, add exercises in the order from the last training (preserves training order)
+    if (lastTraining) {
+      for (const lastEx of lastTraining) {
+        if (processedIds.has(lastEx.exercise_id)) continue
+        processedIds.add(lastEx.exercise_id)
+
+        if (lastEx.sets && lastEx.sets.length > 0) {
+          newEntries.push({
+            exercise_id: lastEx.exercise_id,
+            exercise_name: lastEx.exercise_name,
+            sets: lastEx.sets.map((s: any, i: number) => ({
+              set_number: i + 1,
+              weight: s.weight?.toString() ?? '',
+              reps: s.reps?.toString() ?? '',
+              prefilled_weight: s.weight?.toString() ?? '',
+              prefilled_reps: s.reps?.toString() ?? '',
+              touchedWeight: false,
+              touchedReps: false,
+            })),
+          })
+        } else {
+          newEntries.push({
+            exercise_id: lastEx.exercise_id,
+            exercise_name: lastEx.exercise_name,
+            sets: [{
+              set_number: 1,
+              weight: '',
+              reps: '',
+              prefilled_weight: '',
+              prefilled_reps: '',
+              touchedWeight: false,
+              touchedReps: false,
+            }],
+          })
+        }
       }
+    }
+
+    // Then append any new exercises that weren't in the last training
+    for (const ex of exercises) {
+      if (processedIds.has(ex.id)) continue
+      processedIds.add(ex.id)
+
+      newEntries.push({
+        exercise_id: ex.id,
+        exercise_name: ex.name,
+        sets: [{
+          set_number: 1,
+          weight: '',
+          reps: '',
+          prefilled_weight: '',
+          prefilled_reps: '',
+          touchedWeight: false,
+          touchedReps: false,
+        }],
+      })
     }
 
     setEntries(newEntries)
