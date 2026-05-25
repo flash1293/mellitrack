@@ -234,6 +234,16 @@ export default function TrainingForm() {
     )
   }
 
+  const getComparisonColor = (currentValue: string, prefilledValue: string): string => {
+    if (!prefilledValue || !currentValue) return ''
+    const current = parseFloat(currentValue)
+    const prefill = parseFloat(prefilledValue)
+    if (isNaN(current) || isNaN(prefill)) return ''
+    if (current > prefill) return 'bg-green-100'
+    if (current < prefill) return 'bg-red-100'
+    return 'bg-yellow-100'
+  }
+
   const handleSubmit = async () => {
     if (!date) return
     const validEntries = entries
@@ -339,6 +349,8 @@ export default function TrainingForm() {
                     onBlur={() => markTouched(ei, si, 'weight')}
                     style={{ minWidth: 0, width: '100%' }}
                     className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
+                      getComparisonColor(set.weight, set.prefilled_weight)
+                    } ${
                       isChanged(set, 'weight') || isTouched(set, 'weight')
                         ? 'border-l-4 border-l-blue-500 border-gray-300'
                         : 'border-gray-300'
@@ -354,6 +366,8 @@ export default function TrainingForm() {
                     onBlur={() => markTouched(ei, si, 'reps')}
                     style={{ minWidth: 0, width: '100%' }}
                     className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
+                      getComparisonColor(set.reps, set.prefilled_reps)
+                    } ${
                       isChanged(set, 'reps') || isTouched(set, 'reps')
                         ? 'border-l-4 border-l-blue-500 border-gray-300'
                         : 'border-gray-300'
