@@ -32,6 +32,14 @@ app.get('/:id', async (c) => {
 
   if (!training) return c.json({ error: 'Not found' }, 404)
 
+  // Find the previous training in the same category
+  const previousTraining = await db.prepare(`
+    SELECT id FROM trainings
+    WHERE category_id = ? AND user_id = ? AND (date < ? OR (date = ? AND id < ?))
+    ORDER BY date DESC, id DESC
+    LIMIT 1
+  `).bind(training.category_id, userId, training.date, training.date, id).first()
+
   const { results: exercises } = await db.prepare(`
     SELECT te.id, te.exercise_id, e.name as exercise_name
     FROM training_exercises te
@@ -48,6 +56,20 @@ app.get('/:id', async (c) => {
       ORDER BY set_number
     `).bind(ex.id).all()
     ex.sets = sets
+
+    // Get previous training's sets for this exercise (for comparison)
+    if (previousTraining) {
+      const { results: prevSets } = await db.prepare(`
+        SELECT s.set_number, s.weight, s.reps
+        FROM sets s
+        JOIN training_exercises te ON s.training_exercise_id = te.id
+        WHERE te.training_id = ? AND te.exercise_id = ?
+        ORDER BY s.set_number
+      `).bind(previousTraining.id, ex.exercise_id).all()
+      ex.previous_sets = prevSets || []
+    } else {
+      ex.previous_sets = []
+    }
   }
 
   return c.json({ ...training, exercises })

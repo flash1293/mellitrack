@@ -8,6 +8,8 @@ interface Set {
   reps: string
   prefilled_weight: string
   prefilled_reps: string
+  previous_weight: string
+  previous_reps: string
   touchedWeight: boolean
   touchedReps: boolean
 }
@@ -59,15 +61,21 @@ export default function TrainingForm() {
         t.exercises.map((ex: any) => ({
           exercise_id: ex.exercise_id,
           exercise_name: ex.exercise_name,
-          sets: ex.sets.map((s: any) => ({
-            set_number: s.set_number,
-            weight: s.weight?.toString() ?? '',
-            reps: s.reps?.toString() ?? '',
-            prefilled_weight: s.weight?.toString() ?? '',
-            prefilled_reps: s.reps?.toString() ?? '',
-            touchedWeight: false,
-            touchedReps: false,
-          })),
+          sets: ex.sets.map((s: any) => {
+            // Find matching set from previous training for comparison
+            const prevSet = (ex.previous_sets || []).find((ps: any) => ps.set_number === s.set_number)
+            return {
+              set_number: s.set_number,
+              weight: s.weight?.toString() ?? '',
+              reps: s.reps?.toString() ?? '',
+              prefilled_weight: s.weight?.toString() ?? '',
+              prefilled_reps: s.reps?.toString() ?? '',
+              previous_weight: prevSet?.weight?.toString() ?? '',
+              previous_reps: prevSet?.reps?.toString() ?? '',
+              touchedWeight: false,
+              touchedReps: false,
+            }
+          }),
         }))
       )
       setLoading(false)
@@ -106,6 +114,8 @@ export default function TrainingForm() {
               reps: s.reps?.toString() ?? '',
               prefilled_weight: s.weight?.toString() ?? '',
               prefilled_reps: s.reps?.toString() ?? '',
+              previous_weight: s.weight?.toString() ?? '',
+              previous_reps: s.reps?.toString() ?? '',
               touchedWeight: false,
               touchedReps: false,
             })),
@@ -120,6 +130,8 @@ export default function TrainingForm() {
               reps: '',
               prefilled_weight: '',
               prefilled_reps: '',
+              previous_weight: '',
+              previous_reps: '',
               touchedWeight: false,
               touchedReps: false,
             }],
@@ -142,6 +154,8 @@ export default function TrainingForm() {
           reps: '',
           prefilled_weight: '',
           prefilled_reps: '',
+          previous_weight: '',
+          previous_reps: '',
           touchedWeight: false,
           touchedReps: false,
         }],
@@ -195,6 +209,8 @@ export default function TrainingForm() {
               reps: lastSet?.reps || '',
               prefilled_weight: '',
               prefilled_reps: '',
+              previous_weight: '',
+              previous_reps: '',
               touchedWeight: false,
               touchedReps: false,
             },
@@ -234,13 +250,13 @@ export default function TrainingForm() {
     )
   }
 
-  const getComparisonColor = (currentValue: string, prefilledValue: string): string => {
-    if (!prefilledValue || !currentValue) return ''
+  const getComparisonColor = (currentValue: string, previousValue: string): string => {
+    if (!previousValue || !currentValue) return ''
     const current = parseFloat(currentValue)
-    const prefill = parseFloat(prefilledValue)
-    if (isNaN(current) || isNaN(prefill)) return ''
-    if (current > prefill) return 'bg-green-100'
-    if (current < prefill) return 'bg-red-100'
+    const previous = parseFloat(previousValue)
+    if (isNaN(current) || isNaN(previous)) return ''
+    if (current > previous) return 'bg-green-100'
+    if (current < previous) return 'bg-red-100'
     return 'bg-yellow-100'
   }
 
@@ -349,7 +365,7 @@ export default function TrainingForm() {
                     onBlur={() => markTouched(ei, si, 'weight')}
                     style={{ minWidth: 0, width: '100%' }}
                     className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
-                      getComparisonColor(set.weight, set.prefilled_weight)
+                      getComparisonColor(set.weight, set.previous_weight)
                     } ${
                       isChanged(set, 'weight') || isTouched(set, 'weight')
                         ? 'border-l-4 border-l-blue-500 border-gray-300'
@@ -366,7 +382,7 @@ export default function TrainingForm() {
                     onBlur={() => markTouched(ei, si, 'reps')}
                     style={{ minWidth: 0, width: '100%' }}
                     className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
-                      getComparisonColor(set.reps, set.prefilled_reps)
+                      getComparisonColor(set.reps, set.previous_reps)
                     } ${
                       isChanged(set, 'reps') || isTouched(set, 'reps')
                         ? 'border-l-4 border-l-blue-500 border-gray-300'
