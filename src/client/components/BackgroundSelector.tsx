@@ -5,6 +5,9 @@ const THEMES = [
   { id: 'rosengarten', label: 'Rosengarten', emoji: '🌸' },
   { id: 'lila-ornamente', label: 'Lila Ornamente', emoji: '💜' },
   { id: 'herzchenregen', label: 'Herzchenregen', emoji: '💕' },
+  { id: 'silber-gitter', label: 'Silber-Gitter', emoji: '🪟' },
+  { id: 'graphit-streifen', label: 'Graphit-Streifen', emoji: '⬛' },
+  { id: 'diamant', label: 'Diamant', emoji: '💎' },
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']
@@ -22,6 +25,9 @@ export function applyTheme(themeId: ThemeId) {
     'bg-theme-rosengarten',
     'bg-theme-lila-ornamente',
     'bg-theme-herzchenregen',
+    'bg-theme-silber-gitter',
+    'bg-theme-graphit-streifen',
+    'bg-theme-diamant',
   )
   document.documentElement.classList.add(`bg-theme-${themeId}`)
 }

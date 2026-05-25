@@ -52,10 +52,37 @@ input[type="number"] {
   background-size: 100px 100px, 100% 100%;
 }
 
+/* 4. Silber-Gitter — dark slate with precise grid pattern */
+.bg-theme-silber-gitter {
+  background: 
+    url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPGcgb3BhY2l0eT0iMC4yNSIgc3Ryb2tlPSIjYzBjMGMwIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiPgogICAgPGxpbmUgeDE9IjAiIHkxPSIzMCIgeDI9IjEyMCIgeTI9IjMwIi8+CiAgICA8bGluZSB4MT0iMCIgeTE9IjYwIiB4Mj0iMTIwIiB5Mj0iNjAiLz4KICAgIDxsaW5lIHgxPSIwIiB5MT0iOTAiIHgyPSIxMjAiIHkyPSI5MCIvPgogICAgPGxpbmUgeDE9IjMwIiB5MT0iMCIgeDI9IjMwIiB5Mj0iMTIwIi8+CiAgICA8bGluZSB4MT0iNjAiIHkxPSIwIiB4Mj0iNjAiIHkyPSIxMjAiLz4KICAgIDxsaW5lIHgxPSI5MCIgeTE9IjAiIHgyPSI5MCIgeTI9IjEyMCIvPgogIDwvZz4KICA8ZyBmaWxsPSIjZTBlMGUwIiBvcGFjaXR5PSIwLjQiPgogICAgPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iNjAiIGN5PSIzMCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iOTAiIGN5PSIzMCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iMzAiIGN5PSI2MCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iNjAiIGN5PSI2MCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iOTAiIGN5PSI2MCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iMzAiIGN5PSI5MCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iNjAiIGN5PSI5MCIgcj0iMiIvPgogICAgPGNpcmNsZSBjeD0iOTAiIGN5PSI5MCIgcj0iMiIvPgogIDwvZz4KPC9zdmc+") repeat,
+    linear-gradient(135deg, #1a1a2e 0%, #2d2d44 50%, #1e1e30 100%);
+  background-size: 120px 120px, 100% 100%;
+}
+
+/* 5. Graphit-Streifen — dark charcoal with vertical pinstripes */
+.bg-theme-graphit-streifen {
+  background: 
+    url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjgiIGhlaWdodD0iMTIwIiBmaWxsPSIjYTBhMGEwIiBvcGFjaXR5PSIwLjE1Ii8+CiAgPHJlY3QgeD0iMTUiIHk9IjAiIHdpZHRoPSIyIiBoZWlnaHQ9IjEyMCIgZmlsbD0iI2MwYzBjMCIgb3BhY2l0eT0iMC4yIi8+CiAgPHJlY3QgeD0iMjUiIHk9IjAiIHdpZHRoPSIxNCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiM4MDgwODAiIG9wYWNpdHk9IjAuMSIvPgogIDxyZWN0IHg9IjQ4IiB5PSIwIiB3aWR0aD0iNCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiNiMGIwYjAiIG9wYWNpdHk9IjAuMTUiLz4KICA8cmVjdCB4PSI2MCIgeT0iMCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEyMCIgZmlsbD0iIzkwOTA5MCIgb3BhY2l0eT0iMC4xMiIvPgogIDxyZWN0IHg9Ijc4IiB5PSIwIiB3aWR0aD0iMiIgaGVpZ2h0PSIxMjAiIGZpbGw9IiNkMGQwZDAiIG9wYWNpdHk9IjAuMiIvPgogIDxyZWN0IHg9Ijg4IiB5PSIwIiB3aWR0aD0iMTYiIGhlaWdodD0iMTIwIiBmaWxsPSIjNzA3MDcwIiBvcGFjaXR5PSIwLjA4Ii8+CiAgPHJlY3QgeD0iMTEwIiB5PSIwIiB3aWR0aD0iMyIgaGVpZ2h0PSIxMjAiIGZpbGw9IiNjMGMwYzAiIG9wYWNpdHk9IjAuMTUiLz4KPC9zdmc+") repeat,
+    linear-gradient(180deg, #1c1c1c 0%, #2a2a2a 50%, #1c1c1c 100%);
+  background-size: 120px 120px, 100% 100%;
+}
+
+/* 6. Diamant — dark with repeating diamond/rhombus geometric pattern */
+.bg-theme-diamant {
+  background: 
+    url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYzBjMGMwIiBzdHJva2Utd2lkdGg9IjEuMiIgb3BhY2l0eT0iMC4yIj4KICAgIDxwb2x5Z29uIHBvaW50cz0iNjAsMCAxMjAsNjAgNjAsMTIwIDAsNjAiLz4KICA8L2c+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYTBhMGEwIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuMTUiPgogICAgPHBvbHlnb24gcG9pbnRzPSI2MCwxNSAxMDUsNjAgNjAsMTA1IDE1LDYwIi8+CiAgPC9nPgogIDxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2RkZCIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuMSI+CiAgICA8cG9seWdvbiBwb2ludHM9IjYwLDMwIDkwLDYwIDYwLDkwIDMwLDYwIi8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjYwIiBjeT0iNjAiIHI9IjMiIGZpbGw9IiNkMGQwZDAiIG9wYWNpdHk9IjAuMyIvPgo8L3N2Zz4=") repeat,
+    linear-gradient(135deg, #161616 0%, #2e2e2e 30%, #3d3d3d 70%, #232323 100%);
+  background-size: 120px 120px, 100% 100%;
+}
+
 /* Animated shimmer for all themes */
 .bg-theme-rosengarten,
 .bg-theme-lila-ornamente,
-.bg-theme-herzchenregen {
+.bg-theme-herzchenregen,
+.bg-theme-silber-gitter,
+.bg-theme-graphit-streifen,
+.bg-theme-diamant {
   background-attachment: fixed;
   transition: background 0.5s ease;
 }
@@ -63,7 +90,10 @@ input[type="number"] {
 /* Content cards keep white background for readability */
 .bg-theme-rosengarten .bg-white,
 .bg-theme-lila-ornamente .bg-white,
-.bg-theme-herzchenregen .bg-white {
+.bg-theme-herzchenregen .bg-white,
+.bg-theme-silber-gitter .bg-white,
+.bg-theme-graphit-streifen .bg-white,
+.bg-theme-diamant .bg-white {
   @apply shadow-sm;
   backdrop-filter: none;
 }
