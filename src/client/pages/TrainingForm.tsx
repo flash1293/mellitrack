@@ -8,6 +8,8 @@ interface Set {
   reps: string
   prefilled_weight: string
   prefilled_reps: string
+  touchedWeight: boolean
+  touchedReps: boolean
 }
 
 interface ExerciseEntry {
@@ -63,6 +65,8 @@ export default function TrainingForm() {
             reps: s.reps?.toString() ?? '',
             prefilled_weight: s.weight?.toString() ?? '',
             prefilled_reps: s.reps?.toString() ?? '',
+            touchedWeight: false,
+            touchedReps: false,
           })),
         }))
       )
@@ -97,6 +101,8 @@ export default function TrainingForm() {
             reps: s.reps?.toString() ?? '',
             prefilled_weight: s.weight?.toString() ?? '',
             prefilled_reps: s.reps?.toString() ?? '',
+            touchedWeight: false,
+            touchedReps: false,
           })),
         })
       } else {
@@ -109,6 +115,8 @@ export default function TrainingForm() {
             reps: '',
             prefilled_weight: '',
             prefilled_reps: '',
+            touchedWeight: false,
+            touchedReps: false,
           }],
         })
       }
@@ -119,6 +127,27 @@ export default function TrainingForm() {
 
   const isChanged = (set: Set, field: 'weight' | 'reps') => {
     return set[field] !== (field === 'weight' ? set.prefilled_weight : set.prefilled_reps)
+  }
+
+  const isTouched = (set: Set, field: 'weight' | 'reps') => {
+    return field === 'weight' ? set.touchedWeight : set.touchedReps
+  }
+
+  const markTouched = (entryIndex: number, setIndex: number, field: 'weight' | 'reps') => {
+    setEntries((prev) =>
+      prev.map((e, i) =>
+        i === entryIndex
+          ? {
+              ...e,
+              sets: e.sets.map((s, si) =>
+                si === setIndex
+                  ? { ...s, [field === 'weight' ? 'touchedWeight' : 'touchedReps']: true }
+                  : s
+              ),
+            }
+          : e
+      )
+    )
   }
 
   const removeExercise = (index: number) => {
@@ -140,6 +169,8 @@ export default function TrainingForm() {
               reps: lastSet?.reps || '',
               prefilled_weight: '',
               prefilled_reps: '',
+              touchedWeight: false,
+              touchedReps: false,
             },
           ],
         }
@@ -279,11 +310,12 @@ export default function TrainingForm() {
                     placeholder="kg"
                     value={set.weight}
                     onChange={(e) => updateSet(ei, si, 'weight', e.target.value)}
+                    onBlur={() => markTouched(ei, si, 'weight')}
                     style={{ minWidth: 0, width: '100%' }}
                     className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
-                      isChanged(set, 'weight')
-                        ? 'border-l-4 border-l-blue-500 border-gray-300 focus:bg-blue-50'
-                        : 'border-gray-300 focus:bg-amber-50'
+                      isChanged(set, 'weight') || isTouched(set, 'weight')
+                        ? 'border-l-4 border-l-blue-500 border-gray-300'
+                        : 'border-gray-300'
                     }`}
                   />
                   <span className="text-lg shrink-0">⚖️</span>
@@ -293,11 +325,12 @@ export default function TrainingForm() {
                     placeholder="Wdh"
                     value={set.reps}
                     onChange={(e) => updateSet(ei, si, 'reps', e.target.value)}
+                    onBlur={() => markTouched(ei, si, 'reps')}
                     style={{ minWidth: 0, width: '100%' }}
                     className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
-                      isChanged(set, 'reps')
-                        ? 'border-l-4 border-l-blue-500 border-gray-300 focus:bg-blue-50'
-                        : 'border-gray-300 focus:bg-amber-50'
+                      isChanged(set, 'reps') || isTouched(set, 'reps')
+                        ? 'border-l-4 border-l-blue-500 border-gray-300'
+                        : 'border-gray-300'
                     }`}
                   />
                   <span className="text-lg shrink-0">🔁</span>
