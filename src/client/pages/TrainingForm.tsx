@@ -183,7 +183,8 @@ export default function TrainingForm() {
   useEffect(() => {
     if (!selectedCategory || isEdit) return
     if (restoredFromDraftRef.current) {
-      restoredFromDraftRef.current = false
+      // Don't clear the flag here — the in-flight loadExercisesForCategory
+      // may still need to check it to avoid overwriting restored draft data
       return
     }
     loadExercisesForCategory(parseInt(selectedCategory))
@@ -198,7 +199,10 @@ export default function TrainingForm() {
     if (loadingCategoryRef.current !== categoryId) return
 
     // If draft was restored while we were loading, discard to avoid overwriting
-    if (restoredFromDraftRef.current) return
+    if (restoredFromDraftRef.current) {
+      restoredFromDraftRef.current = false
+      return
+    }
 
     const newEntries: ExerciseEntry[] = []
     const processedIds = new Set<number>()
