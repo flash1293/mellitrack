@@ -132,7 +132,6 @@ app.get('/last-category/:categoryId', async (c) => {
     LEFT JOIN sets s ON s.training_exercise_id = latest.last_te_id
     WHERE m.category_id = ? AND e.user_id = ? AND e.deleted_at IS NULL
     ORDER BY
-      CASE WHEN te_order.id IS NULL THEN 1 ELSE 0 END,
       e.sort_order,
       e.name,
       s.set_number
