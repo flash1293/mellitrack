@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 
@@ -20,6 +20,44 @@ interface ExerciseEntry {
   sets: Set[]
 }
 
+interface DraftData {
+  date: string
+  selectedCategory: string
+  entries: ExerciseEntry[]
+  isEdit: boolean
+  trainingId?: string
+}
+
+const DRAFT_KEY = 'mellitrack_training_draft'
+const DRAFT_DEBOUNCE_MS = 1000
+
+function saveDraft(date: string, selectedCategory: string, entries: ExerciseEntry[], isEdit: boolean, trainingId?: string) {
+  try {
+    const data: DraftData = { date, selectedCategory, entries, isEdit, trainingId }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
+  } catch {
+    // localStorage might be full — silently ignore
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // silently ignore
+  }
+}
+
+function loadDraft(): DraftData | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 export default function TrainingForm() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -31,8 +69,12 @@ export default function TrainingForm() {
   const [entries, setEntries] = useState<ExerciseEntry[]>([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
+  const [showDraftPrompt, setShowDraftPrompt] = useState(false)
   const loadingCategoryRef = useRef<number | null>(null)
   const userSelectedRef = useRef(false)
+  const draftTimerRef = useRef<number | null>(null)
+  const hasDataRef = useRef(false)
+  const restoredFromDraftRef = useRef(false)
 
   useEffect(() => {
     api.getCategories().then((cats: any[]) => {
@@ -82,8 +124,68 @@ export default function TrainingForm() {
     })
   }, [id, isEdit])
 
+  // --- Draft: check for existing draft on mount (new training only) ---
+  useEffect(() => {
+    if (isEdit) return
+    const draft = loadDraft()
+    if (draft && !draft.isEdit && !draft.trainingId) {
+      setShowDraftPrompt(true)
+    }
+  }, [isEdit])
+
+  const discardDraft = useCallback(() => {
+    clearDraft()
+    setShowDraftPrompt(false)
+  }, [])
+
+  const restoreDraft = useCallback(() => {
+    const draft = loadDraft()
+    if (!draft) return
+    restoredFromDraftRef.current = true
+    setDate(draft.date)
+    setSelectedCategory(draft.selectedCategory)
+    setEntries(draft.entries)
+    setShowDraftPrompt(false)
+  }, [])
+
+  // --- Draft: save on visibility change (phone lock) ---
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && hasDataRef.current) {
+        saveDraft(date, selectedCategory, entries, isEdit, id)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [date, selectedCategory, entries, isEdit, id])
+
+  // --- Draft: debounced save on data change ---
+  useEffect(() => {
+    if (!hasDataRef.current && (entries.length > 0 || date)) {
+      hasDataRef.current = true
+    }
+    if (!hasDataRef.current) return
+
+    if (draftTimerRef.current) {
+      clearTimeout(draftTimerRef.current)
+    }
+    draftTimerRef.current = window.setTimeout(() => {
+      saveDraft(date, selectedCategory, entries, isEdit, id)
+    }, DRAFT_DEBOUNCE_MS)
+
+    return () => {
+      if (draftTimerRef.current) {
+        clearTimeout(draftTimerRef.current)
+      }
+    }
+  }, [date, selectedCategory, entries, isEdit, id])
+
   useEffect(() => {
     if (!selectedCategory || isEdit) return
+    if (restoredFromDraftRef.current) {
+      restoredFromDraftRef.current = false
+      return
+    }
     loadExercisesForCategory(parseInt(selectedCategory))
   }, [selectedCategory, isEdit])
 
@@ -287,6 +389,7 @@ export default function TrainingForm() {
       } else {
         await api.createTraining({ date, category_id: parseInt(selectedCategory), exercises: validEntries })
       }
+      clearDraft()
       navigate('/trainings')
     } catch (err: any) {
       alert(err.message)
@@ -300,6 +403,28 @@ export default function TrainingForm() {
   return (
     <div className="space-y-4 max-w-2xl w-full overflow-hidden">
       <h2 className="text-xl font-bold">{isEdit ? 'Training bearbeiten' : 'Neues Training'}</h2>
+
+      {showDraftPrompt && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <p className="text-sm text-amber-800">
+            Es gibt einen gespeicherten Entwurf von einem vorherigen Besuch. Möchtest du damit fortfahren?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={restoreDraft}
+              className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg font-medium hover:bg-amber-700 transition-colors"
+            >
+              Entwurf wiederherstellen
+            </button>
+            <button
+              onClick={discardDraft}
+              className="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg hover:bg-amber-100 transition-colors"
+            >
+              Verwerfen
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <div>
