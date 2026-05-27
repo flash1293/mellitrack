@@ -197,71 +197,59 @@ export default function TrainingForm() {
     // If category changed while we were loading, discard this result
     if (loadingCategoryRef.current !== categoryId) return
 
+    // If draft was restored while we were loading, discard to avoid overwriting
+    if (restoredFromDraftRef.current) return
+
     const newEntries: ExerciseEntry[] = []
     const processedIds = new Set<number>()
 
-    // First, add exercises in the order from the last training (preserves training order)
+    // Build a lookup for pre-filled sets from the last training
+    const lastTrainingByExercise: Record<number, any> = {}
     if (lastTraining) {
-      for (const lastEx of lastTraining) {
-        if (processedIds.has(lastEx.exercise_id)) continue
-        processedIds.add(lastEx.exercise_id)
-
-        if (lastEx.sets && lastEx.sets.length > 0) {
-          newEntries.push({
-            exercise_id: lastEx.exercise_id,
-            exercise_name: lastEx.exercise_name,
-            sets: lastEx.sets.map((s: any, i: number) => ({
-              set_number: i + 1,
-              weight: s.weight?.toString() ?? '',
-              reps: s.reps?.toString() ?? '',
-              prefilled_weight: s.weight?.toString() ?? '',
-              prefilled_reps: s.reps?.toString() ?? '',
-              previous_weight: s.weight?.toString() ?? '',
-              previous_reps: s.reps?.toString() ?? '',
-              touchedWeight: false,
-              touchedReps: false,
-            })),
-          })
-        } else {
-          newEntries.push({
-            exercise_id: lastEx.exercise_id,
-            exercise_name: lastEx.exercise_name,
-            sets: [{
-              set_number: 1,
-              weight: '',
-              reps: '',
-              prefilled_weight: '',
-              prefilled_reps: '',
-              previous_weight: '',
-              previous_reps: '',
-              touchedWeight: false,
-              touchedReps: false,
-            }],
-          })
-        }
+      for (const ex of lastTraining) {
+        lastTrainingByExercise[ex.exercise_id] = ex
       }
     }
 
-    // Then append any new exercises that weren't in the last training
+    // Add exercises in sort_order (from exercises API) and pre-fill from last training
     for (const ex of exercises) {
       if (processedIds.has(ex.id)) continue
       processedIds.add(ex.id)
 
-      newEntries.push({
-        exercise_id: ex.id,
-        exercise_name: ex.name,
-        sets: [{
-          set_number: 1,
-          weight: '',
-          reps: '',
-          prefilled_weight: '',
-          prefilled_reps: '',
-          previous_weight: '',
-          previous_reps: '',
-          touchedWeight: false,
-          touchedReps: false,
-        }],
-      })
+      const lastEx = lastTrainingByExercise[ex.id]
+      if (lastEx && lastEx.sets && lastEx.sets.length > 0) {
+        newEntries.push({
+          exercise_id: lastEx.exercise_id,
+          exercise_name: lastEx.exercise_name,
+          sets: lastEx.sets.map((s: any, i: number) => ({
+            set_number: i + 1,
+            weight: s.weight?.toString() ?? '',
+            reps: s.reps?.toString() ?? '',
+            prefilled_weight: s.weight?.toString() ?? '',
+            prefilled_reps: s.reps?.toString() ?? '',
+            previous_weight: s.weight?.toString() ?? '',
+            previous_reps: s.reps?.toString() ?? '',
+            touchedWeight: false,
+            touchedReps: false,
+          })),
+        })
+      } else {
+        newEntries.push({
+          exercise_id: ex.id,
+          exercise_name: ex.name,
+          sets: [{
+            set_number: 1,
+            weight: '',
+            reps: '',
+            prefilled_weight: '',
+            prefilled_reps: '',
+            previous_weight: '',
+            previous_reps: '',
+            touchedWeight: false,
+            touchedReps: false,
+          }],
+        })
+      }
     }
 
     setEntries(newEntries)
