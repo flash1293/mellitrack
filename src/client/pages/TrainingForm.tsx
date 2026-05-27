@@ -260,6 +260,22 @@ export default function TrainingForm() {
     return 'bg-yellow-100'
   }
 
+  const getTotalReps = (sets: Set[], field: 'reps' | 'previous_reps'): number => {
+    return sets.reduce((sum, set) => {
+      const val = parseFloat(set[field])
+      return sum + (isNaN(val) ? 0 : val)
+    }, 0)
+  }
+
+  const getTotalComparisonColor = (sets: Set[]): string => {
+    const currentTotal = getTotalReps(sets, 'reps')
+    const previousTotal = getTotalReps(sets, 'previous_reps')
+    if (currentTotal === 0 && previousTotal === 0) return ''
+    if (currentTotal > previousTotal) return 'bg-green-100'
+    if (currentTotal < previousTotal) return 'bg-red-100'
+    return 'bg-yellow-100'
+  }
+
   const handleSubmit = async () => {
     if (!date) return
     const validEntries = entries
@@ -401,6 +417,23 @@ export default function TrainingForm() {
                 </div>
               ))}
             </div>
+
+            {/* Total reps row */}
+            {entry.sets.length > 0 && (
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                <span className="text-sm font-medium text-gray-500 shrink-0">∑</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium text-sm ${
+                  getTotalComparisonColor(entry.sets)
+                }`}>
+                  {getTotalReps(entry.sets, 'reps')} Wiederholungen
+                </span>
+                <span className="text-xs text-gray-400">
+                  {getTotalReps(entry.sets, 'previous_reps') > 0
+                    ? `(vorher: ${getTotalReps(entry.sets, 'previous_reps')})`
+                    : ''}
+                </span>
+              </div>
+            )}
 
             <button
               onClick={() => addSet(ei)}
