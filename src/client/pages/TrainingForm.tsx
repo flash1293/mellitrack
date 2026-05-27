@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 
@@ -20,6 +20,44 @@ interface ExerciseEntry {
   sets: Set[]
 }
 
+interface DraftData {
+  date: string
+  selectedCategory: string
+  entries: ExerciseEntry[]
+  isEdit: boolean
+  trainingId?: string
+}
+
+const DRAFT_KEY = 'mellitrack_training_draft'
+const DRAFT_DEBOUNCE_MS = 1000
+
+function saveDraft(date: string, selectedCategory: string, entries: ExerciseEntry[], isEdit: boolean, trainingId?: string) {
+  try {
+    const data: DraftData = { date, selectedCategory, entries, isEdit, trainingId }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
+  } catch {
+    // localStorage might be full — silently ignore
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // silently ignore
+  }
+}
+
+function loadDraft(): DraftData | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 export default function TrainingForm() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -31,8 +69,12 @@ export default function TrainingForm() {
   const [entries, setEntries] = useState<ExerciseEntry[]>([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
+  const [showDraftPrompt, setShowDraftPrompt] = useState(false)
   const loadingCategoryRef = useRef<number | null>(null)
   const userSelectedRef = useRef(false)
+  const draftTimerRef = useRef<number | null>(null)
+  const hasDataRef = useRef(false)
+  const restoredFromDraftRef = useRef(false)
 
   useEffect(() => {
     api.getCategories().then((cats: any[]) => {
@@ -82,8 +124,69 @@ export default function TrainingForm() {
     })
   }, [id, isEdit])
 
+  // --- Draft: check for existing draft on mount (new training only) ---
+  useEffect(() => {
+    if (isEdit) return
+    const draft = loadDraft()
+    if (draft && !draft.isEdit && !draft.trainingId) {
+      setShowDraftPrompt(true)
+    }
+  }, [isEdit])
+
+  const discardDraft = useCallback(() => {
+    clearDraft()
+    setShowDraftPrompt(false)
+  }, [])
+
+  const restoreDraft = useCallback(() => {
+    const draft = loadDraft()
+    if (!draft) return
+    restoredFromDraftRef.current = true
+    setDate(draft.date)
+    setSelectedCategory(draft.selectedCategory)
+    setEntries(draft.entries)
+    setShowDraftPrompt(false)
+  }, [])
+
+  // --- Draft: save on visibility change (phone lock) ---
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && hasDataRef.current) {
+        saveDraft(date, selectedCategory, entries, isEdit, id)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [date, selectedCategory, entries, isEdit, id])
+
+  // --- Draft: debounced save on data change ---
+  useEffect(() => {
+    if (!hasDataRef.current && (entries.length > 0 || date)) {
+      hasDataRef.current = true
+    }
+    if (!hasDataRef.current) return
+
+    if (draftTimerRef.current) {
+      clearTimeout(draftTimerRef.current)
+    }
+    draftTimerRef.current = window.setTimeout(() => {
+      saveDraft(date, selectedCategory, entries, isEdit, id)
+    }, DRAFT_DEBOUNCE_MS)
+
+    return () => {
+      if (draftTimerRef.current) {
+        clearTimeout(draftTimerRef.current)
+      }
+    }
+  }, [date, selectedCategory, entries, isEdit, id])
+
   useEffect(() => {
     if (!selectedCategory || isEdit) return
+    if (restoredFromDraftRef.current) {
+      // Don't clear the flag here — the in-flight loadExercisesForCategory
+      // may still need to check it to avoid overwriting restored draft data
+      return
+    }
     loadExercisesForCategory(parseInt(selectedCategory))
   }, [selectedCategory, isEdit])
 
@@ -95,71 +198,62 @@ export default function TrainingForm() {
     // If category changed while we were loading, discard this result
     if (loadingCategoryRef.current !== categoryId) return
 
+    // If draft was restored while we were loading, discard to avoid overwriting
+    if (restoredFromDraftRef.current) {
+      restoredFromDraftRef.current = false
+      return
+    }
+
     const newEntries: ExerciseEntry[] = []
     const processedIds = new Set<number>()
 
-    // First, add exercises in the order from the last training (preserves training order)
+    // Build a lookup for pre-filled sets from the last training
+    const lastTrainingByExercise: Record<number, any> = {}
     if (lastTraining) {
-      for (const lastEx of lastTraining) {
-        if (processedIds.has(lastEx.exercise_id)) continue
-        processedIds.add(lastEx.exercise_id)
-
-        if (lastEx.sets && lastEx.sets.length > 0) {
-          newEntries.push({
-            exercise_id: lastEx.exercise_id,
-            exercise_name: lastEx.exercise_name,
-            sets: lastEx.sets.map((s: any, i: number) => ({
-              set_number: i + 1,
-              weight: s.weight?.toString() ?? '',
-              reps: s.reps?.toString() ?? '',
-              prefilled_weight: s.weight?.toString() ?? '',
-              prefilled_reps: s.reps?.toString() ?? '',
-              previous_weight: s.weight?.toString() ?? '',
-              previous_reps: s.reps?.toString() ?? '',
-              touchedWeight: false,
-              touchedReps: false,
-            })),
-          })
-        } else {
-          newEntries.push({
-            exercise_id: lastEx.exercise_id,
-            exercise_name: lastEx.exercise_name,
-            sets: [{
-              set_number: 1,
-              weight: '',
-              reps: '',
-              prefilled_weight: '',
-              prefilled_reps: '',
-              previous_weight: '',
-              previous_reps: '',
-              touchedWeight: false,
-              touchedReps: false,
-            }],
-          })
-        }
+      for (const ex of lastTraining) {
+        lastTrainingByExercise[ex.exercise_id] = ex
       }
     }
 
-    // Then append any new exercises that weren't in the last training
+    // Add exercises in sort_order (from exercises API) and pre-fill from last training
     for (const ex of exercises) {
       if (processedIds.has(ex.id)) continue
       processedIds.add(ex.id)
 
-      newEntries.push({
-        exercise_id: ex.id,
-        exercise_name: ex.name,
-        sets: [{
-          set_number: 1,
-          weight: '',
-          reps: '',
-          prefilled_weight: '',
-          prefilled_reps: '',
-          previous_weight: '',
-          previous_reps: '',
-          touchedWeight: false,
-          touchedReps: false,
-        }],
-      })
+      const lastEx = lastTrainingByExercise[ex.id]
+      if (lastEx && lastEx.sets && lastEx.sets.length > 0) {
+        newEntries.push({
+          exercise_id: lastEx.exercise_id,
+          exercise_name: lastEx.exercise_name,
+          sets: lastEx.sets.map((s: any, i: number) => ({
+            set_number: i + 1,
+            weight: s.weight?.toString() ?? '',
+            reps: s.reps?.toString() ?? '',
+            prefilled_weight: s.weight?.toString() ?? '',
+            prefilled_reps: s.reps?.toString() ?? '',
+            previous_weight: s.weight?.toString() ?? '',
+            previous_reps: s.reps?.toString() ?? '',
+            touchedWeight: false,
+            touchedReps: false,
+          })),
+        })
+      } else {
+        newEntries.push({
+          exercise_id: ex.id,
+          exercise_name: ex.name,
+          sets: [{
+            set_number: 1,
+            weight: '',
+            reps: '',
+            prefilled_weight: '',
+            prefilled_reps: '',
+            previous_weight: '',
+            previous_reps: '',
+            touchedWeight: false,
+            touchedReps: false,
+          }],
+        })
+      }
     }
 
     setEntries(newEntries)
@@ -303,6 +397,7 @@ export default function TrainingForm() {
       } else {
         await api.createTraining({ date, category_id: parseInt(selectedCategory), exercises: validEntries })
       }
+      clearDraft()
       navigate('/trainings')
     } catch (err: any) {
       alert(err.message)
@@ -316,6 +411,28 @@ export default function TrainingForm() {
   return (
     <div className="space-y-4 max-w-2xl w-full overflow-hidden">
       <h2 className="text-xl font-bold">{isEdit ? 'Training bearbeiten' : 'Neues Training'}</h2>
+
+      {showDraftPrompt && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <p className="text-sm text-amber-800">
+            Es gibt einen gespeicherten Entwurf von einem vorherigen Besuch. Möchtest du damit fortfahren?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={restoreDraft}
+              className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg font-medium hover:bg-amber-700 transition-colors"
+            >
+              Entwurf wiederherstellen
+            </button>
+            <button
+              onClick={discardDraft}
+              className="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg hover:bg-amber-100 transition-colors"
+            >
+              Verwerfen
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <div>
