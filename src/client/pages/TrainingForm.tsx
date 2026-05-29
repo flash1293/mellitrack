@@ -73,6 +73,7 @@ export default function TrainingForm() {
   const userSelectedRef = useRef(false)
   const hasDataRef = useRef(false)
   const restoredFromDraftRef = useRef(false)
+  const selectedCategoryRef = useRef(selectedCategory)
   const [draftDiscarded, setDraftDiscarded] = useState(false)
 
   // --- On mount: restore draft immediately (before any API calls can interfere) ---
@@ -89,12 +90,19 @@ export default function TrainingForm() {
     }
   }, [isEdit])
 
+  // --- Keep ref in sync with selectedCategory (for use in async callbacks) ---
+  useEffect(() => {
+    selectedCategoryRef.current = selectedCategory
+  }, [selectedCategory])
+
   // --- Load categories ---
   useEffect(() => {
     api.getCategories().then((cats: any[]) => {
       setCategories(cats)
       // Nur Kategorie setzen wenn noch keine ausgewählt ist (durch Draft oder User)
-      if (cats.length > 0 && !isEdit && !userSelectedRef.current && !selectedCategory) {
+      // Wichtig: selectedCategoryRef.current verwenden (nicht selectedCategory aus dem Closure),
+      // da der Callback async läuft und selectedCategory sich inzwischen geändert haben kann
+      if (cats.length > 0 && !isEdit && !userSelectedRef.current && !selectedCategoryRef.current) {
         setSelectedCategory(String(cats[0].id))
       }
     })
@@ -450,6 +458,11 @@ export default function TrainingForm() {
             value={selectedCategory}
             onChange={(e) => {
               userSelectedRef.current = true
+              // Wenn ein Draft wiederhergestellt wurde und der User die Kategorie wechselt,
+              // soll der Draft nicht blockieren — neue Übungen für die gewählte Kategorie laden
+              if (restoredFromDraftRef.current) {
+                restoredFromDraftRef.current = false
+              }
               setSelectedCategory(e.target.value)
             }}
             disabled={isEdit}
