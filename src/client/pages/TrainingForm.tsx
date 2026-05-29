@@ -29,7 +29,6 @@ interface DraftData {
 }
 
 const DRAFT_KEY = 'mellitrack_training_draft'
-const DRAFT_DEBOUNCE_MS = 1000
 
 function saveDraft(date: string, selectedCategory: string, entries: ExerciseEntry[], isEdit: boolean, trainingId?: string) {
   try {
@@ -69,22 +68,39 @@ export default function TrainingForm() {
   const [entries, setEntries] = useState<ExerciseEntry[]>([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
-  const [showDraftPrompt, setShowDraftPrompt] = useState(false)
+  const [showDraftRestored, setShowDraftRestored] = useState(false)
   const loadingCategoryRef = useRef<number | null>(null)
   const userSelectedRef = useRef(false)
-  const draftTimerRef = useRef<number | null>(null)
   const hasDataRef = useRef(false)
   const restoredFromDraftRef = useRef(false)
+  const [draftDiscarded, setDraftDiscarded] = useState(false)
 
+  // --- On mount: restore draft immediately (before any API calls can interfere) ---
+  useEffect(() => {
+    if (isEdit) return
+    const draft = loadDraft()
+    if (draft && !draft.isEdit && !draft.trainingId) {
+      // Draft gefunden → sofort wiederherstellen, bevor API-Calls starten
+      restoredFromDraftRef.current = true
+      setDate(draft.date)
+      setSelectedCategory(draft.selectedCategory)
+      setEntries(draft.entries)
+      setShowDraftRestored(true)
+    }
+  }, [isEdit])
+
+  // --- Load categories ---
   useEffect(() => {
     api.getCategories().then((cats: any[]) => {
       setCategories(cats)
+      // Nur Kategorie setzen wenn noch keine ausgewählt ist (durch Draft oder User)
       if (cats.length > 0 && !isEdit && !userSelectedRef.current && !selectedCategory) {
         setSelectedCategory(String(cats[0].id))
       }
     })
   }, [isEdit, selectedCategory])
 
+  // --- Load existing training for editing ---
   useEffect(() => {
     if (!isEdit || !id) return
     api.getTraining(Number(id)).then((t: any) => {
@@ -124,67 +140,56 @@ export default function TrainingForm() {
     })
   }, [id, isEdit])
 
-  // --- Draft: check for existing draft on mount (new training only) ---
-  useEffect(() => {
-    if (isEdit) return
-    const draft = loadDraft()
-    if (draft && !draft.isEdit && !draft.trainingId) {
-      setShowDraftPrompt(true)
-    }
-  }, [isEdit])
-
+  // --- Draft verwerfen ---
   const discardDraft = useCallback(() => {
     clearDraft()
-    setShowDraftPrompt(false)
+    setShowDraftRestored(false)
+    setDraftDiscarded(true)
+    restoredFromDraftRef.current = false
+    // Kategorie zurücksetzen, damit die normale Ladereihenfolge greift
+    setSelectedCategory('')
   }, [])
 
-  const restoreDraft = useCallback(() => {
-    const draft = loadDraft()
-    if (!draft) return
-    restoredFromDraftRef.current = true
-    setDate(draft.date)
-    setSelectedCategory(draft.selectedCategory)
-    setEntries(draft.entries)
-    setShowDraftPrompt(false)
-  }, [])
-
-  // --- Draft: save on visibility change (phone lock) ---
+  // --- Save draft: visibility change (phone lock / tab close) ---
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden' && hasDataRef.current) {
         saveDraft(date, selectedCategory, entries, isEdit, id)
       }
     }
+    // Use capture phase to get the event before other handlers
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [date, selectedCategory, entries, isEdit, id])
 
-  // --- Draft: debounced save on data change ---
+  // --- Save draft: beforeunload (tab close) ---
   useEffect(() => {
-    if (!hasDataRef.current && (entries.length > 0 || date)) {
+    const handleBeforeUnload = () => {
+      if (hasDataRef.current) {
+        saveDraft(date, selectedCategory, entries, isEdit, id)
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [date, selectedCategory, entries, isEdit, id])
+
+  // --- Save draft: immediate save on every data change (no debounce) ---
+  useEffect(() => {
+    // Don't start saving data until user has actually entered something
+    if (!hasDataRef.current && entries.some(e => e.sets.some(s => s.weight || s.reps))) {
       hasDataRef.current = true
     }
     if (!hasDataRef.current) return
 
-    if (draftTimerRef.current) {
-      clearTimeout(draftTimerRef.current)
-    }
-    draftTimerRef.current = window.setTimeout(() => {
-      saveDraft(date, selectedCategory, entries, isEdit, id)
-    }, DRAFT_DEBOUNCE_MS)
-
-    return () => {
-      if (draftTimerRef.current) {
-        clearTimeout(draftTimerRef.current)
-      }
-    }
+    // Save immediately (not debounced) for maximum reliability
+    saveDraft(date, selectedCategory, entries, isEdit, id)
   }, [date, selectedCategory, entries, isEdit, id])
 
+  // --- Load exercises when category changes ---
   useEffect(() => {
     if (!selectedCategory || isEdit) return
+    // Wenn ein Draft wiederhergestellt wurde, nicht die Übungen laden
     if (restoredFromDraftRef.current) {
-      // Don't clear the flag here — the in-flight loadExercisesForCategory
-      // may still need to check it to avoid overwriting restored draft data
       return
     }
     loadExercisesForCategory(parseInt(selectedCategory))
@@ -198,7 +203,7 @@ export default function TrainingForm() {
     // If category changed while we were loading, discard this result
     if (loadingCategoryRef.current !== categoryId) return
 
-    // If draft was restored while we were loading, discard to avoid overwriting
+    // If a draft was restored while we were loading, discard to avoid overwriting
     if (restoredFromDraftRef.current) {
       restoredFromDraftRef.current = false
       return
@@ -412,23 +417,18 @@ export default function TrainingForm() {
     <div className="space-y-4 max-w-2xl w-full overflow-hidden">
       <h2 className="text-xl font-bold">{isEdit ? 'Training bearbeiten' : 'Neues Training'}</h2>
 
-      {showDraftPrompt && (
+      {showDraftRestored && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
           <p className="text-sm text-amber-800">
-            Es gibt einen gespeicherten Entwurf von einem vorherigen Besuch. Möchtest du damit fortfahren?
+            ✨ Entwurf vom {new Date(date).toLocaleDateString('de-DE')} wurde wiederhergestellt.
+            Deine Eingaben sind sicher und werden fortlaufend gespeichert.
           </p>
           <div className="flex gap-2">
-            <button
-              onClick={restoreDraft}
-              className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg font-medium hover:bg-amber-700 transition-colors"
-            >
-              Entwurf wiederherstellen
-            </button>
             <button
               onClick={discardDraft}
               className="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg hover:bg-amber-100 transition-colors"
             >
-              Verwerfen
+              Entwurf verwerfen
             </button>
           </div>
         </div>
@@ -464,7 +464,11 @@ export default function TrainingForm() {
         </div>
       </div>
 
-      {entries.length === 0 ? (
+      {!draftDiscarded && entries.length === 0 && !isEdit && !showDraftRestored ? (
+        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
+          <p className="text-gray-500">Keine Übungen in dieser Kategorie</p>
+        </div>
+      ) : entries.length === 0 ? (
         <div className="bg-white rounded-xl p-8 text-center shadow-sm">
           <p className="text-gray-500">Keine Übungen in dieser Kategorie</p>
         </div>
