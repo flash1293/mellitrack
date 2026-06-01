@@ -4,8 +4,6 @@ A lightweight, single-user fitness tracking web app. Log your training sessions,
 
 Built for one person, runs on Cloudflare's edge. No database setup, no server management — just deploy and go.
 
-**🌐 Live:** [mellitrack.joereuter.dev](https://mellitrack.joereuter.dev)
-
 ---
 
 ## Features
@@ -192,7 +190,7 @@ database_name = "mellitrack-db"
 database_id = "<your-database-id>"
 
 [[routes]]
-pattern = "mellitrack.joereuter.dev"
+pattern = "your-domain.com"
 custom_domain = true
 ```
 
