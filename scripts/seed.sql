@@ -7,9 +7,9 @@ DELETE FROM exercises;
 DELETE FROM exercise_categories;
 DELETE FROM users;
 
--- Create default user (password: CHANGEME)
+-- Create default user (password: demo123)
 INSERT INTO users (id, username, password_hash) VALUES
-  (1, 'default', '9361d32cd2deb7c0168d7426fc75787f96827d8864cd8ced7f2b7f6aa46916b8');
+  (1, 'default', 'd3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791');
 
 -- Seed categories
 INSERT INTO exercise_categories (id, name, user_id) VALUES

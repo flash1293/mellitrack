@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test'
 
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'demo123'
+
 test.describe('Mellitrack E2E', () => {
   test('login flow works', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('h1:has-text("Mellitrack")')).toBeVisible()
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
     await expect(page.locator('h2:has-text("Dashboard")')).toBeVisible()
   })
@@ -40,7 +42,7 @@ test.describe('Mellitrack E2E', () => {
   test('dashboard shows category charts', async ({ page }) => {
     await page.goto('/')
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
     await expect(page.locator('h2:has-text("Dashboard")')).toBeVisible()
 
@@ -60,7 +62,7 @@ test.describe('Mellitrack E2E', () => {
     // Login via UI
     await page.goto('/')
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
     await expect(page.locator('h2:has-text("Dashboard")')).toBeVisible()
 
@@ -108,7 +110,7 @@ test.describe('Mellitrack E2E', () => {
     // Login
     await page.goto('/')
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
 
     // Navigate to trainings
@@ -137,7 +139,7 @@ test.describe('Mellitrack E2E', () => {
     // Login
     await page.goto('/')
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
 
     // Navigate to exercises
@@ -163,7 +165,7 @@ test.describe('Mellitrack E2E', () => {
     // Login
     await page.goto('/')
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
 
     // Go to exercises and click on the first one
@@ -178,7 +180,7 @@ test.describe('Mellitrack E2E', () => {
     // Login
     await page.goto('/')
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
 
     // Navigate to exercises
@@ -205,7 +207,7 @@ test.describe('Mellitrack E2E', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/')
     await page.fill('input[type="text"]', 'default')
-    await page.fill('input[type="password"]', 'CHANGEME')
+    await page.fill('input[type="password"]', TEST_PASSWORD)
     await page.click('button:has-text("Anmelden")')
 
     // Bottom nav should be visible

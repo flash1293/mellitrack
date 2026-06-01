@@ -57,9 +57,6 @@ jobs:
           main = "src/server/index.ts"
           compatibility_date = "2024-05-12"
 
-          [vars]
-          APP_PASSWORD = "CHANGEME"
-
           [[d1_databases]]
           binding = "DB"
           database_name = "${{ steps.create-db.outputs.db_name }}"
@@ -94,7 +91,7 @@ jobs:
           export CF_ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
           echo "Seeding preview database..."
           python3 scripts/d1_api.py seed "$DB_ID"
-          echo "Preview database seeded! Login: default / CHANGEME"
+          echo "Preview database seeded! Default user: default / demo123"
 
       - name: Build
         run: npm run build

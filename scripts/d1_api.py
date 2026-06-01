@@ -65,9 +65,9 @@ def cmd_seed():
     """Seed preview database with default user."""
     db_id = sys.argv[2]
 
-    # Default user (password: CHANGEME)
+    # Default user (password: demo123)
     sql = """INSERT OR IGNORE INTO users (id, username, password_hash)
-    VALUES (1, 'default', '9361d32cd2deb7c0168d7426fc75787f96827d8864cd8ced7f2b7f6aa46916b8')"""
+    VALUES (1, 'default', 'd3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791')"""
     payload = json.dumps({"sql": sql}).encode()
     result = api_call(api_url(f"/{db_id}/query"), method="POST", data=payload)
     if result.get("success"):

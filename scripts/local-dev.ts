@@ -78,9 +78,8 @@ async function main() {
   }
 
   // Set up environment
-  const env = {
+  const env: Record<string, any> = {
     DB: createD1(db),
-    APP_PASSWORD: 'CHANGEME',
   }
 
   // Import and serve the app

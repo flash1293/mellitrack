@@ -61,9 +61,9 @@ CREATE TABLE IF NOT EXISTS exercise_category_mappings (
   FOREIGN KEY (category_id) REFERENCES exercise_categories(id) ON DELETE CASCADE
 );
 
--- Seed default user (password: CHANGEME)
+-- Seed default user (password: demo123)
 INSERT OR IGNORE INTO users (id, username, password_hash) VALUES
-  (1, 'default', '9361d32cd2deb7c0168d7426fc75787f96827d8864cd8ced7f2b7f6aa46916b8');
+  (1, 'default', 'd3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791');
 
 -- Seed default categories
 INSERT OR IGNORE INTO exercise_categories (name, user_id) VALUES

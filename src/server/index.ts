@@ -9,7 +9,6 @@ import { STATIC_ASSETS } from './static-manifest'
 
 export type Env = {
   DB: D1Database
-  APP_PASSWORD: string
 }
 
 export type Variables = {
