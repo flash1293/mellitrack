@@ -7,13 +7,13 @@ interface FormButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<string, string> = {
   primary:
-    'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50',
+    'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 px-4 py-2',
   secondary:
-    'border border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50',
+    'border border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 px-4 py-2',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:opacity-50',
+    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:opacity-50 px-4 py-2',
   ghost:
-    'text-blue-600 hover:text-blue-700 hover:underline disabled:opacity-50',
+    'text-blue-600 hover:text-blue-700 hover:underline disabled:opacity-50 p-2',
 }
 
 export default function FormButton({
