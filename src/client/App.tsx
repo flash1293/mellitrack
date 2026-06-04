@@ -21,7 +21,10 @@ function App() {
       if (r.authenticated && r.username) {
         setUsername(r.username)
       }
-    }).catch(() => setAuth(false))
+    }).catch((err) => {
+      console.error('Auth check failed:', err)
+      setAuth(false)
+    })
   }, [])
 
   const handleLogin = () => {
@@ -30,6 +33,9 @@ function App() {
       if (r.authenticated && r.username) {
         setUsername(r.username)
       }
+    }).catch((err) => {
+      console.error('Auth re-check failed:', err)
+      setAuth(false)
     })
   }
 

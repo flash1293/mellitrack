@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import EmptyState from '../components/ui/EmptyState'
+import ErrorBanner from '../components/ui/ErrorBanner'
 import { formatDateShort, formatDateLong } from '../utils/dates'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type { ExerciseWithCategories, ExerciseProgressRow, ProgressSetJson } from '../../shared/types'
@@ -11,13 +12,18 @@ export default function ProgressPage() {
   const navigate = useNavigate()
   const [data, setData] = useState<ExerciseProgressRow[]>([])
   const [exercise, setExercise] = useState<ExerciseWithCategories | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!exerciseId) return
-    api.getProgress(parseInt(exerciseId)).then((data) => setData(data))
+    api.getProgress(parseInt(exerciseId)).then((data) => setData(data)).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Fortschrittsdaten')
+    })
     api.getExercises().then((exs) => {
       const ex = exs.find((e) => e.id === parseInt(exerciseId))
       setExercise(ex || null)
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Übungen')
     })
   }, [exerciseId])
 
@@ -36,6 +42,8 @@ export default function ProgressPage() {
         </button>
         <h2 className="text-xl font-bold">{exercise.name}</h2>
       </div>
+
+      <ErrorBanner message={error} />
 
       {data.length < 2 ? (
         <EmptyState

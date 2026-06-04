@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import FormButton from '../components/ui/FormButton'
 import EmptyState from '../components/ui/EmptyState'
+import ErrorBanner from '../components/ui/ErrorBanner'
 import { formatDateFull } from '../utils/dates'
 import type { TrainingListItem } from '../../shared/types'
 
@@ -10,18 +11,26 @@ export default function TrainingList() {
   const navigate = useNavigate()
   const [trainings, setTrainings] = useState<TrainingListItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     api.getTrainings().then((data) => {
       setTrainings(data)
+      setLoading(false)
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Trainings')
       setLoading(false)
     })
   }, [])
 
   const handleDelete = async (id: number) => {
     if (!confirm('Training wirklich löschen?')) return
-    await api.deleteTraining(id)
-    setTrainings((prev) => prev.filter((t) => t.id !== id))
+    try {
+      await api.deleteTraining(id)
+      setTrainings((prev) => prev.filter((t) => t.id !== id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Löschen')
+    }
   }
 
   if (loading) return <div className="p-4 text-center">Laden...</div>
@@ -34,6 +43,8 @@ export default function TrainingList() {
           + Neues Training
         </FormButton>
       </div>
+
+      <ErrorBanner message={error} />
 
       {trainings.length === 0 ? (
         <EmptyState
