@@ -14,7 +14,10 @@
     "db:migrate:prod": "wrangler d1 migrations apply mellitrack-db",
     "db:seed": "wrangler d1 execute mellitrack-db --local --file=./scripts/seed.sql",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@cloudflare/kv-asset-handler": "^0.5.0",
@@ -28,7 +31,11 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240512.0",
     "@hono/node-server": "^2.0.4",
+    "@hono/vite-dev-server": "^0.26.0",
     "@playwright/test": "^1.44.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
@@ -36,11 +43,13 @@
     "autoprefixer": "^10.4.19",
     "better-sqlite3": "^12.10.0",
     "concurrently": "^8.2.2",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "tsx": "^4.19.0",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
+    "vitest": "^4.1.8",
     "wrangler": "^4.94.0"
   }
 }
