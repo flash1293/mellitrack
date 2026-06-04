@@ -1,6 +1,26 @@
+import type {
+  ExerciseWithCategories,
+  ExerciseCategory,
+  ExerciseInCategory,
+  AuthResponse,
+  AuthCheckResponse,
+  SuccessResponse,
+  DeleteExerciseResponse,
+  TrainingListItem,
+  TrainingDetail,
+  LastSetResponse,
+  LastCategoryExerciseGroup,
+  CreateTrainingResponse,
+  AllProgressRow,
+  ExerciseProgressRow,
+  CreateExerciseRequest,
+  UpdateExerciseRequest,
+  TrainingExerciseInput,
+} from '../shared/types'
+
 const API_BASE = '/api'
 
-async function fetchApi<T = any>(path: string, options?: RequestInit): Promise<T> {
+async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -21,43 +41,50 @@ async function fetchApi<T = any>(path: string, options?: RequestInit): Promise<T
 }
 
 export const api = {
-  login: (username: string, password: string) => fetchApi('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  }),
-  register: (username: string, password: string) => fetchApi('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  }),
-  logout: () => fetchApi('/auth/logout', { method: 'POST' }),
-  checkAuth: () => fetchApi('/auth/check'),
+  login: (username: string, password: string) =>
+    fetchApi<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  register: (username: string, password: string) =>
+    fetchApi<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  logout: () => fetchApi<SuccessResponse>('/auth/logout', { method: 'POST' }),
+  checkAuth: () => fetchApi<AuthCheckResponse>('/auth/check'),
 
-  getExercises: () => fetchApi('/exercises'),
-  createExercise: (data: { name: string; category_ids: number[] }) =>
-    fetchApi('/exercises', { method: 'POST', body: JSON.stringify(data) }),
-  updateExercise: (id: number, data: { name: string; category_ids?: number[] }) =>
-    fetchApi(`/exercises/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getExercises: () => fetchApi<ExerciseWithCategories[]>('/exercises'),
+  createExercise: (data: CreateExerciseRequest) =>
+    fetchApi<SuccessResponse & { id?: number }>('/exercises', { method: 'POST', body: JSON.stringify(data) }),
+  updateExercise: (id: number, data: UpdateExerciseRequest) =>
+    fetchApi<SuccessResponse>(`/exercises/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteExercise: (id: number) =>
-    fetchApi(`/exercises/${id}`, { method: 'DELETE' }),
-  getCategories: () => fetchApi('/exercises/categories'),
+    fetchApi<DeleteExerciseResponse>(`/exercises/${id}`, { method: 'DELETE' }),
+  getCategories: () => fetchApi<ExerciseCategory[]>('/exercises/categories'),
   createCategory: (name: string) =>
-    fetchApi('/exercises/categories', { method: 'POST', body: JSON.stringify({ name }) }),
+    fetchApi<SuccessResponse>('/exercises/categories', { method: 'POST', body: JSON.stringify({ name }) }),
   reorderCategories: (ids: number[]) =>
-    fetchApi('/exercises/categories/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
+    fetchApi<SuccessResponse>('/exercises/categories/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
   reorderExercises: (ids: number[]) =>
-    fetchApi('/exercises/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
-  getExercisesByCategory: (categoryId: number) => fetchApi(`/exercises/by-category/${categoryId}`),
+    fetchApi<SuccessResponse>('/exercises/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
+  getExercisesByCategory: (categoryId: number) =>
+    fetchApi<ExerciseInCategory[]>(`/exercises/by-category/${categoryId}`),
 
-  getTrainings: () => fetchApi('/trainings'),
-  getTraining: (id: number) => fetchApi(`/trainings/${id}`),
-  createTraining: (data: { date: string; category_id: number; exercises: any[] }) =>
-    fetchApi('/trainings', { method: 'POST', body: JSON.stringify(data) }),
-  deleteTraining: (id: number) => fetchApi(`/trainings/${id}`, { method: 'DELETE' }),
-  getLastSet: (exerciseId: number) => fetchApi(`/trainings/last-set/${exerciseId}`),
-  getLastCategoryTraining: (categoryId: number) => fetchApi(`/trainings/last-category/${categoryId}`),
-  updateTraining: (id: number, data: { date: string; category_id?: number; exercises: any[] }) =>
-    fetchApi(`/trainings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getTrainings: () => fetchApi<TrainingListItem[]>('/trainings'),
+  getTraining: (id: number) => fetchApi<TrainingDetail>(`/trainings/${id}`),
+  createTraining: (data: { date: string; category_id: number; exercises: TrainingExerciseInput[] }) =>
+    fetchApi<CreateTrainingResponse>('/trainings', { method: 'POST', body: JSON.stringify(data) }),
+  deleteTraining: (id: number) =>
+    fetchApi<SuccessResponse>(`/trainings/${id}`, { method: 'DELETE' }),
+  getLastSet: (exerciseId: number) =>
+    fetchApi<LastSetResponse>(`/trainings/last-set/${exerciseId}`),
+  getLastCategoryTraining: (categoryId: number) =>
+    fetchApi<LastCategoryExerciseGroup[]>(`/trainings/last-category/${categoryId}`),
+  updateTraining: (id: number, data: { date: string; category_id?: number; exercises: TrainingExerciseInput[] }) =>
+    fetchApi<SuccessResponse>(`/trainings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
-  getProgress: (exerciseId: number) => fetchApi(`/progress/${exerciseId}`),
-  getAllProgress: () => fetchApi('/progress'),
+  getProgress: (exerciseId: number) =>
+    fetchApi<ExerciseProgressRow[]>(`/progress/${exerciseId}`),
+  getAllProgress: () => fetchApi<AllProgressRow[]>('/progress'),
 }

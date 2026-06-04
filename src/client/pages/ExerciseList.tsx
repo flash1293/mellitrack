@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import type { ExerciseCategory, ExerciseWithCategories } from '../../shared/types'
 
 export default function ExerciseList() {
   const navigate = useNavigate()
-  const [exercises, setExercises] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
+  const [exercises, setExercises] = useState<ExerciseWithCategories[]>([])
+  const [categories, setCategories] = useState<ExerciseCategory[]>([])
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseCategories, setNewExerciseCategories] = useState<number[]>([])
   const [newCategoryName, setNewCategoryName] = useState('')
@@ -19,8 +20,8 @@ export default function ExerciseList() {
   }, [])
 
   const loadData = () => {
-    api.getExercises().then((data: any[]) => setExercises(data))
-    api.getCategories().then((cats: any[]) => {
+    api.getExercises().then((data) => setExercises(data))
+    api.getCategories().then((cats) => {
       setCategories(cats)
       if (cats.length > 0 && newExerciseCategories.length === 0) {
         setNewExerciseCategories([cats[0].id])
@@ -53,7 +54,7 @@ export default function ExerciseList() {
     const ex = exercises.find((e) => e.id === id)
     await api.updateExercise(id, {
       name: editName.trim(),
-      category_ids: ex?.categories?.map((c: any) => c.id) || [],
+      category_ids: ex?.categories?.map((c) => c.id) || [],
     })
     setEditingExercise(null)
     setEditName('')
@@ -83,7 +84,7 @@ export default function ExerciseList() {
 
   const moveExercise = async (catIndex: number, exIndex: number, direction: 'up' | 'down') => {
     const cat = grouped[catIndex]
-    const ids = cat.exercises.map((e: any) => e.id)
+    const ids = cat.exercises.map((e) => e.id)
     const swap = direction === 'up' ? exIndex - 1 : exIndex + 1
     if (swap < 0 || swap >= ids.length) return
     ;[ids[exIndex], ids[swap]] = [ids[swap], ids[exIndex]]
@@ -95,7 +96,7 @@ export default function ExerciseList() {
   const grouped = categories.map((cat) => ({
     ...cat,
     exercises: exercises.filter((ex) =>
-      ex.categories?.some((c: any) => c.id === cat.id)
+      ex.categories?.some((c) => c.id === cat.id)
     ),
   }))
 
@@ -213,7 +214,7 @@ export default function ExerciseList() {
               <p className="p-4 text-sm text-gray-500">Keine Übungen</p>
             ) : (
               <div className="divide-y divide-gray-100">
-                {cat.exercises.map((ex: any, ei: number) => (
+                {cat.exercises.map((ex, ei) => (
                   <div
                     key={`${cat.id}-${ex.id}`}
                     className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${

@@ -1,7 +1,37 @@
 import { Hono } from 'hono'
 import type { Env, Variables } from '../index'
+import type { LastCategoryExerciseGroup, LastCategorySet } from '../../shared/types'
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
+
+// Helper types for intermediate row shapes
+interface TrainingExerciseRow {
+  id: number
+  exercise_id: number
+  exercise_name: string
+}
+
+interface SetRow {
+  id: number
+  set_number: number
+  weight: number | null
+  reps: number | null
+}
+
+interface PreviousSetRow {
+  set_number: number
+  weight: number | null
+  reps: number | null
+}
+
+interface LastCategoryRow {
+  exercise_id: number
+  exercise_name: string
+  set_number: number | null
+  weight: number | null
+  reps: number | null
+  te_order_id: number | null
+}
 
 app.get('/', async (c) => {
   const db = c.env.DB
@@ -28,7 +58,13 @@ app.get('/:id', async (c) => {
     FROM trainings t
     LEFT JOIN exercise_categories c ON t.category_id = c.id
     WHERE t.id = ? AND t.user_id = ?
-  `).bind(id, userId).first()
+  `).bind(id, userId).first<{
+    id: number
+    date: string
+    user_id: number
+    category_id: number
+    category_name: string
+  }>()
 
   if (!training) return c.json({ error: 'Not found' }, 404)
 
@@ -38,7 +74,7 @@ app.get('/:id', async (c) => {
     WHERE category_id = ? AND user_id = ? AND (date < ? OR (date = ? AND id < ?))
     ORDER BY date DESC, id DESC
     LIMIT 1
-  `).bind(training.category_id, userId, training.date, training.date, id).first()
+  `).bind(training.category_id, userId, training.date, training.date, id).first<{ id: number }>()
 
   const { results: exercises } = await db.prepare(`
     SELECT te.id, te.exercise_id, e.name as exercise_name
@@ -46,18 +82,18 @@ app.get('/:id', async (c) => {
     JOIN exercises e ON te.exercise_id = e.id
     WHERE te.training_id = ?
     ORDER BY te.id
-  `).bind(id).all()
+  `).bind(id).all<TrainingExerciseRow>()
 
+  const exercisesWithSets = []
   for (const ex of exercises) {
     const { results: sets } = await db.prepare(`
       SELECT id, set_number, weight, reps
       FROM sets
       WHERE training_exercise_id = ?
       ORDER BY set_number
-    `).bind(ex.id).all()
-    ex.sets = sets
-
-    // Get previous training's sets for this exercise (for comparison)
+    `).bind(ex.id).all<SetRow>()
+    
+    let previousSets: PreviousSetRow[] = []
     if (previousTraining) {
       const { results: prevSets } = await db.prepare(`
         SELECT s.set_number, s.weight, s.reps
@@ -65,14 +101,20 @@ app.get('/:id', async (c) => {
         JOIN training_exercises te ON s.training_exercise_id = te.id
         WHERE te.training_id = ? AND te.exercise_id = ?
         ORDER BY s.set_number
-      `).bind(previousTraining.id, ex.exercise_id).all()
-      ex.previous_sets = prevSets || []
-    } else {
-      ex.previous_sets = []
+      `).bind(previousTraining.id, ex.exercise_id).all<PreviousSetRow>()
+      previousSets = prevSets || []
     }
+
+    exercisesWithSets.push({
+      id: ex.id,
+      exercise_id: ex.exercise_id,
+      exercise_name: ex.exercise_name,
+      sets,
+      previous_sets: previousSets,
+    })
   }
 
-  return c.json({ ...training, exercises })
+  return c.json({ ...training, exercises: exercisesWithSets })
 })
 
 app.get('/last-set/:exerciseId', async (c) => {
@@ -88,7 +130,7 @@ app.get('/last-set/:exerciseId', async (c) => {
     WHERE te.exercise_id = ? AND t.user_id = ?
     ORDER BY te.id DESC, s.set_number DESC
     LIMIT 1
-  `).bind(exerciseId, userId).first()
+  `).bind(exerciseId, userId).first<{ weight: number | null; reps: number | null }>()
 
   return c.json(result || { weight: null, reps: null })
 })
@@ -100,7 +142,7 @@ app.get('/last-category/:categoryId', async (c) => {
 
   // Return ALL exercises in the category, each with their last sets from a category training
   // Ordered by: last training's exercise order first, then alphabetically for new exercises
-  const { results: exercises } = await db.prepare(`
+  const { results } = await db.prepare(`
     SELECT
       e.id as exercise_id,
       e.name as exercise_name,
@@ -135,23 +177,24 @@ app.get('/last-category/:categoryId', async (c) => {
       e.sort_order,
       e.name,
       s.set_number
-  `).bind(categoryId, userId, categoryId, userId, categoryId, userId).all()
+  `).bind(categoryId, userId, categoryId, userId, categoryId, userId).all<LastCategoryRow>()
 
-  const grouped: Record<number, any> = {}
-  for (const row of (exercises || []) as any[]) {
+  const grouped: Record<number, LastCategoryExerciseGroup> = {}
+  for (const row of results) {
     if (!grouped[row.exercise_id]) {
       grouped[row.exercise_id] = {
         exercise_id: row.exercise_id,
         exercise_name: row.exercise_name,
-        sets: []
+        sets: [],
       }
     }
-    if (row.set_number) {
-      grouped[row.exercise_id].sets.push({
+    if (row.set_number !== null) {
+      const set: LastCategorySet = {
         set_number: row.set_number,
         weight: row.weight,
-        reps: row.reps
-      })
+        reps: row.reps,
+      }
+      grouped[row.exercise_id].sets.push(set)
     }
   }
 
@@ -162,7 +205,7 @@ app.put('/:id', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const id = Number(c.req.param('id'))
-  const body = await c.req.json()
+  const body = await c.req.json() as { date: string; category_id?: number; exercises: { exercise_id: number; sets: { set_number: number; weight: number; reps: number }[] }[] }
 
   // Verify ownership
   const existing = await db.prepare('SELECT id FROM trainings WHERE id = ? AND user_id = ?').bind(id, userId).first()
@@ -175,7 +218,7 @@ app.put('/:id', async (c) => {
 
   const { results: teIds } = await db.prepare(
     'SELECT id FROM training_exercises WHERE training_id = ?'
-  ).bind(id).all()
+  ).bind(id).all<{ id: number }>()
 
   for (const te of teIds || []) {
     await db.prepare('DELETE FROM sets WHERE training_exercise_id = ?')
@@ -203,12 +246,12 @@ app.put('/:id', async (c) => {
 app.post('/', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
-  const { date, category_id, exercises } = await c.req.json()
+  const { date, category_id, exercises } = await c.req.json() as { date: string; category_id: number; exercises: { exercise_id: number; sets: { set_number: number; weight: number; reps: number }[] }[] }
 
   for (const ex of exercises) {
     const row = await db.prepare(
       'SELECT deleted_at FROM exercises WHERE id = ?'
-    ).bind(ex.exercise_id).first()
+    ).bind(ex.exercise_id).first<{ deleted_at: string | null }>()
     if (row?.deleted_at) {
       return c.json({ error: 'Cannot use deleted exercise' }, 400)
     }

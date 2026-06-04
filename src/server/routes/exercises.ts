@@ -1,7 +1,17 @@
 import { Hono } from 'hono'
 import type { Env, Variables } from '../index'
+import type { ExerciseWithCategories } from '../../shared/types'
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
+
+// Helper type for the raw DB row from the JOIN query
+interface ExerciseRow {
+  id: number
+  name: string
+  deleted_at: string | null
+  category_names: string | null
+  category_ids: string | null
+}
 
 app.get('/', async (c) => {
   const db = c.env.DB
@@ -15,13 +25,18 @@ app.get('/', async (c) => {
     GROUP BY e.id, e.name, e.deleted_at
     ORDER BY e.sort_order, e.name
   `).bind(userId).all()
-  const exercises = results.map((r: any) => ({
-    ...r,
+
+  const exercises: ExerciseWithCategories[] = (results as unknown as ExerciseRow[]).map((r) => ({
+    id: r.id,
+    name: r.name,
+    category_id: null,
+    user_id: userId,
     deleted_at: r.deleted_at || null,
+    sort_order: 0,
     categories: r.category_ids
       ? r.category_ids.split(',').map((id: string, i: number) => ({
           id: parseInt(id),
-          name: r.category_names.split(',')[i],
+          name: r.category_names!.split(',')[i],
         }))
       : [],
   }))
@@ -31,7 +46,7 @@ app.get('/', async (c) => {
 app.post('/', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
-  const { name, category_ids } = await c.req.json()
+  const { name, category_ids }: { name: string; category_ids: number[] } = await c.req.json()
 
   const { meta } = await db.prepare(
     'INSERT INTO exercises (name, category_id, user_id, sort_order) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercises WHERE user_id = ?))'
@@ -52,7 +67,7 @@ app.post('/', async (c) => {
 app.put('/reorder', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
-  const { ids } = await c.req.json()
+  const { ids }: { ids: number[] } = await c.req.json()
   for (let i = 0; i < ids.length; i++) {
     await db.prepare(
       'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
@@ -65,7 +80,7 @@ app.put('/:id', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const id = c.req.param('id')
-  const { name, category_ids } = await c.req.json()
+  const { name, category_ids }: { name: string; category_ids?: number[] } = await c.req.json()
 
   // Verify ownership
   const existing = await db.prepare('SELECT id FROM exercises WHERE id = ? AND user_id = ?').bind(id, userId).first()
@@ -131,7 +146,7 @@ app.get('/categories', async (c) => {
 app.put('/categories/reorder', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
-  const { ids } = await c.req.json()
+  const { ids }: { ids: number[] } = await c.req.json()
   for (let i = 0; i < ids.length; i++) {
     await db.prepare(
       'UPDATE exercise_categories SET sort_order = ? WHERE id = ? AND user_id = ?'
@@ -143,7 +158,7 @@ app.put('/categories/reorder', async (c) => {
 app.post('/categories', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
-  const { name } = await c.req.json()
+  const { name }: { name: string } = await c.req.json()
   const { success } = await db.prepare(
     'INSERT INTO exercise_categories (name, user_id, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercise_categories WHERE user_id = ?))'
   ).bind(name, userId, userId).run()

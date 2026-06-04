@@ -1,36 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
-
-interface Set {
-  set_number: number
-  weight: string
-  reps: string
-  prefilled_weight: string
-  prefilled_reps: string
-  previous_weight: string
-  previous_reps: string
-  touchedWeight: boolean
-  touchedReps: boolean
-}
-
-interface ExerciseEntry {
-  exercise_id: number
-  exercise_name: string
-  sets: Set[]
-}
-
-interface DraftData {
-  date: string
-  selectedCategory: string
-  entries: ExerciseEntry[]
-  isEdit: boolean
-  trainingId?: string
-}
+import type {
+  ExerciseCategory,
+  LastCategoryExerciseGroup,
+  FormSet,
+  FormExerciseEntry,
+  DraftData,
+  TrainingDetail,
+} from '../../shared/types'
 
 const DRAFT_KEY = 'mellitrack_training_draft'
 
-function saveDraft(date: string, selectedCategory: string, entries: ExerciseEntry[], isEdit: boolean, trainingId?: string) {
+function saveDraft(date: string, selectedCategory: string, entries: FormExerciseEntry[], isEdit: boolean, trainingId?: string) {
   try {
     const data: DraftData = { date, selectedCategory, entries, isEdit, trainingId }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
@@ -63,9 +45,9 @@ export default function TrainingForm() {
   const isEdit = !!id
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [categories, setCategories] = useState<any[]>([])
+  const [categories, setCategories] = useState<ExerciseCategory[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [entries, setEntries] = useState<ExerciseEntry[]>([])
+  const [entries, setEntries] = useState<FormExerciseEntry[]>([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [showDraftRestored, setShowDraftRestored] = useState(false)
@@ -97,7 +79,7 @@ export default function TrainingForm() {
 
   // --- Load categories ---
   useEffect(() => {
-    api.getCategories().then((cats: any[]) => {
+    api.getCategories().then((cats) => {
       setCategories(cats)
       // Nur Kategorie setzen wenn noch keine ausgewählt ist (durch Draft oder User)
       // Wichtig: selectedCategoryRef.current verwenden (nicht selectedCategory aus dem Closure),
@@ -111,12 +93,12 @@ export default function TrainingForm() {
   // --- Load existing training for editing ---
   useEffect(() => {
     if (!isEdit || !id) return
-    api.getTraining(Number(id)).then((t: any) => {
+    api.getTraining(Number(id)).then((t: TrainingDetail) => {
       setDate(t.date)
       // Infer category from first exercise's categories
       const firstEx = t.exercises[0]
       if (firstEx) {
-        api.getExercises().then((allExs: any[]) => {
+        api.getExercises().then((allExs) => {
           const exData = allExs.find((e) => e.id === firstEx.exercise_id)
           if (exData && exData.categories && exData.categories.length > 0) {
             setSelectedCategory(String(exData.categories[0].id))
@@ -124,12 +106,12 @@ export default function TrainingForm() {
         })
       }
       setEntries(
-        t.exercises.map((ex: any) => ({
+        t.exercises.map((ex) => ({
           exercise_id: ex.exercise_id,
           exercise_name: ex.exercise_name,
-          sets: ex.sets.map((s: any) => {
+          sets: ex.sets.map((s) => {
             // Find matching set from previous training for comparison
-            const prevSet = (ex.previous_sets || []).find((ps: any) => ps.set_number === s.set_number)
+            const prevSet = (ex.previous_sets || []).find((ps) => ps.set_number === s.set_number)
             return {
               set_number: s.set_number,
               weight: s.weight?.toString() ?? '',
@@ -217,11 +199,11 @@ export default function TrainingForm() {
       return
     }
 
-    const newEntries: ExerciseEntry[] = []
+    const newEntries: FormExerciseEntry[] = []
     const processedIds = new Set<number>()
 
     // Build a lookup for pre-filled sets from the last training
-    const lastTrainingByExercise: Record<number, any> = {}
+    const lastTrainingByExercise: Record<number, LastCategoryExerciseGroup> = {}
     if (lastTraining) {
       for (const ex of lastTraining) {
         lastTrainingByExercise[ex.exercise_id] = ex
@@ -238,7 +220,7 @@ export default function TrainingForm() {
         newEntries.push({
           exercise_id: lastEx.exercise_id,
           exercise_name: lastEx.exercise_name,
-          sets: lastEx.sets.map((s: any, i: number) => ({
+          sets: lastEx.sets.map((s, i) => ({
             set_number: i + 1,
             weight: s.weight?.toString() ?? '',
             reps: s.reps?.toString() ?? '',
@@ -272,11 +254,11 @@ export default function TrainingForm() {
     setEntries(newEntries)
   }
 
-  const isChanged = (set: Set, field: 'weight' | 'reps') => {
+  const isChanged = (set: FormSet, field: 'weight' | 'reps') => {
     return set[field] !== (field === 'weight' ? set.prefilled_weight : set.prefilled_reps)
   }
 
-  const isTouched = (set: Set, field: 'weight' | 'reps') => {
+  const isTouched = (set: FormSet, field: 'weight' | 'reps') => {
     return field === 'weight' ? set.touchedWeight : set.touchedReps
   }
 
@@ -367,14 +349,14 @@ export default function TrainingForm() {
     return 'bg-yellow-100'
   }
 
-  const getTotalReps = (sets: Set[], field: 'reps' | 'previous_reps'): number => {
+  const getTotalReps = (sets: FormSet[], field: 'reps' | 'previous_reps'): number => {
     return sets.reduce((sum, set) => {
       const val = parseFloat(set[field])
       return sum + (isNaN(val) ? 0 : val)
     }, 0)
   }
 
-  const getTotalComparisonColor = (sets: Set[]): string => {
+  const getTotalComparisonColor = (sets: FormSet[]): string => {
     const currentTotal = getTotalReps(sets, 'reps')
     const previousTotal = getTotalReps(sets, 'previous_reps')
     if (currentTotal === 0 && previousTotal === 0) return ''
@@ -412,8 +394,9 @@ export default function TrainingForm() {
       }
       clearDraft()
       navigate('/trainings')
-    } catch (err: any) {
-      alert(err.message)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert(message)
     } finally {
       setSaving(false)
     }

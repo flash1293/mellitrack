@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { getCookie } from 'hono/cookie'
+import type { MiddlewareHandler } from 'hono'
 import auth from './routes/auth'
 import exercises from './routes/exercises'
 import trainings from './routes/trainings'
@@ -23,7 +24,7 @@ app.use('/api/*', cors({
 }))
 
 // Auth middleware for protected routes
-const authMiddleware = async (c: any, next: any) => {
+const authMiddleware: MiddlewareHandler<{ Bindings: Env; Variables: Variables }> = async (c, next) => {
   const session = getCookie(c, 'session')
   if (!session) {
     return c.json({ error: 'Unauthorized' }, 401)
