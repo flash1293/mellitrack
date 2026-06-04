@@ -84,35 +84,48 @@ app.get('/:id', async (c) => {
     ORDER BY te.id
   `).bind(id).all<TrainingExerciseRow>()
 
-  const exercisesWithSets = []
-  for (const ex of exercises) {
-    const { results: sets } = await db.prepare(`
-      SELECT id, set_number, weight, reps
-      FROM sets
-      WHERE training_exercise_id = ?
-      ORDER BY set_number
-    `).bind(ex.id).all<SetRow>()
-    
-    let previousSets: PreviousSetRow[] = []
-    if (previousTraining) {
-      const { results: prevSets } = await db.prepare(`
-        SELECT s.set_number, s.weight, s.reps
-        FROM sets s
-        JOIN training_exercises te ON s.training_exercise_id = te.id
-        WHERE te.training_id = ? AND te.exercise_id = ?
-        ORDER BY s.set_number
-      `).bind(previousTraining.id, ex.exercise_id).all<PreviousSetRow>()
-      previousSets = prevSets || []
-    }
+  // Fetch all sets for this training in a single query (instead of N queries)
+  const { results: allSets } = await db.prepare(`
+    SELECT s.id, s.set_number, s.weight, s.reps, s.training_exercise_id
+    FROM sets s
+    JOIN training_exercises te ON s.training_exercise_id = te.id
+    WHERE te.training_id = ?
+    ORDER BY te.id, s.set_number
+  `).bind(id).all<SetRow & { training_exercise_id: number }>()
 
-    exercisesWithSets.push({
-      id: ex.id,
-      exercise_id: ex.exercise_id,
-      exercise_name: ex.exercise_name,
-      sets,
-      previous_sets: previousSets,
-    })
+  // Group sets by training_exercise_id
+  const setsByTeId: Record<number, SetRow[]> = {}
+  for (const s of allSets || []) {
+    const teId = s.training_exercise_id
+    if (!setsByTeId[teId]) setsByTeId[teId] = []
+    setsByTeId[teId].push({ id: s.id, set_number: s.set_number, weight: s.weight, reps: s.reps })
   }
+
+  // Fetch all previous sets in a single query (if previous training exists)
+  const prevSetsByExerciseId: Record<number, PreviousSetRow[]> = {}
+  if (previousTraining) {
+    const { results: allPrevSets } = await db.prepare(`
+      SELECT s.set_number, s.weight, s.reps, te.exercise_id
+      FROM sets s
+      JOIN training_exercises te ON s.training_exercise_id = te.id
+      WHERE te.training_id = ?
+      ORDER BY te.exercise_id, s.set_number
+    `).bind(previousTraining.id).all<PreviousSetRow & { exercise_id: number }>()
+
+    for (const ps of allPrevSets || []) {
+      const exId = ps.exercise_id
+      if (!prevSetsByExerciseId[exId]) prevSetsByExerciseId[exId] = []
+      prevSetsByExerciseId[exId].push({ set_number: ps.set_number, weight: ps.weight, reps: ps.reps })
+    }
+  }
+
+  const exercisesWithSets = exercises.map((ex) => ({
+    id: ex.id,
+    exercise_id: ex.exercise_id,
+    exercise_name: ex.exercise_name,
+    sets: setsByTeId[ex.id] || [],
+    previous_sets: prevSetsByExerciseId[ex.exercise_id] || [],
+  }))
 
   return c.json({ ...training, exercises: exercisesWithSets })
 })
@@ -248,13 +261,15 @@ app.post('/', async (c) => {
   const userId = c.get('userId')
   const { date, category_id, exercises } = await c.req.json() as { date: string; category_id: number; exercises: { exercise_id: number; sets: { set_number: number; weight: number; reps: number }[] }[] }
 
-  for (const ex of exercises) {
-    const row = await db.prepare(
-      'SELECT deleted_at FROM exercises WHERE id = ?'
-    ).bind(ex.exercise_id).first<{ deleted_at: string | null }>()
-    if (row?.deleted_at) {
-      return c.json({ error: 'Cannot use deleted exercise' }, 400)
-    }
+  // Single query to validate all exercises (instead of N queries)
+  const placeholders = exercises.map(() => '?').join(', ')
+  const { results: exerciseRows } = await db.prepare(
+    `SELECT id, deleted_at FROM exercises WHERE id IN (${placeholders})`
+  ).bind(...exercises.map((ex) => ex.exercise_id)).all<{ id: number; deleted_at: string | null }>()
+
+  const deletedIds = (exerciseRows || []).filter((r) => r.deleted_at).map((r) => r.id)
+  if (deletedIds.length > 0) {
+    return c.json({ error: 'Cannot use deleted exercise' }, 400)
   }
 
   const { meta } = await db.prepare(
