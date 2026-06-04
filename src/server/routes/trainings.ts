@@ -272,25 +272,33 @@ app.post('/', async (c) => {
     return c.json({ error: 'Cannot use deleted exercise' }, 400)
   }
 
-  const { meta } = await db.prepare(
-    'INSERT INTO trainings (date, user_id, category_id) VALUES (?, ?, ?)'
-  ).bind(date, userId, category_id).run()
-  const trainingId = meta.last_row_id
+  // Wrap training creation + exercises + sets in a transaction for atomicity
+  await db.prepare('BEGIN').run()
+  try {
+    const { meta } = await db.prepare(
+      'INSERT INTO trainings (date, user_id, category_id) VALUES (?, ?, ?)'
+    ).bind(date, userId, category_id).run()
+    const trainingId = meta.last_row_id
 
-  for (const ex of exercises) {
-    const { meta: teMeta } = await db.prepare(
-      'INSERT INTO training_exercises (training_id, exercise_id) VALUES (?, ?)'
-    ).bind(trainingId, ex.exercise_id).run()
-    const teId = teMeta.last_row_id
+    for (const ex of exercises) {
+      const { meta: teMeta } = await db.prepare(
+        'INSERT INTO training_exercises (training_id, exercise_id) VALUES (?, ?)'
+      ).bind(trainingId, ex.exercise_id).run()
+      const teId = teMeta.last_row_id
 
-    for (const set of ex.sets) {
-      await db.prepare(
-        'INSERT INTO sets (training_exercise_id, set_number, weight, reps) VALUES (?, ?, ?, ?)'
-      ).bind(teId, set.set_number, set.weight, set.reps).run()
+      for (const set of ex.sets) {
+        await db.prepare(
+          'INSERT INTO sets (training_exercise_id, set_number, weight, reps) VALUES (?, ?, ?, ?)'
+        ).bind(teId, set.set_number, set.weight, set.reps).run()
+      }
     }
-  }
 
-  return c.json({ id: trainingId, success: true })
+    await db.prepare('COMMIT').run()
+    return c.json({ id: trainingId, success: true })
+  } catch (error) {
+    await db.prepare('ROLLBACK').run()
+    return c.json({ error: 'Database error: training creation failed' }, 500)
+  }
 })
 
 app.delete('/:id', async (c) => {
@@ -304,8 +312,16 @@ app.delete('/:id', async (c) => {
     return c.json({ error: 'Not found' }, 404)
   }
 
-  await db.prepare('DELETE FROM trainings WHERE id = ?').bind(id).run()
-  return c.json({ success: true })
+  // Wrap in transaction for atomicity (CASCADE deletes training_exercises + sets)
+  await db.prepare('BEGIN').run()
+  try {
+    await db.prepare('DELETE FROM trainings WHERE id = ?').bind(id).run()
+    await db.prepare('COMMIT').run()
+    return c.json({ success: true })
+  } catch (error) {
+    await db.prepare('ROLLBACK').run()
+    return c.json({ error: 'Database error: training deletion failed' }, 500)
+  }
 })
 
 export default app

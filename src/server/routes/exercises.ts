@@ -68,12 +68,21 @@ app.put('/reorder', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const { ids }: { ids: number[] } = await c.req.json()
-  for (let i = 0; i < ids.length; i++) {
-    await db.prepare(
-      'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
-    ).bind(i, ids[i], userId).run()
+
+  // Wrap reordering in a transaction for atomicity
+  await db.prepare('BEGIN').run()
+  try {
+    for (let i = 0; i < ids.length; i++) {
+      await db.prepare(
+        'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
+      ).bind(i, ids[i], userId).run()
+    }
+    await db.prepare('COMMIT').run()
+    return c.json({ success: true })
+  } catch (error) {
+    await db.prepare('ROLLBACK').run()
+    return c.json({ error: 'Database error: reorder failed' }, 500)
   }
-  return c.json({ success: true })
 })
 
 app.put('/:id', async (c) => {
