@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import EmptyState from '../components/ui/EmptyState'
+import { formatDateShort, formatDateLong } from '../utils/dates'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type { ExerciseWithCategories, ExerciseProgressRow, ProgressSetJson } from '../../shared/types'
 
@@ -51,11 +52,11 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    tickFormatter={formatDateShort}
                   />
                   <YAxis />
                   <Tooltip
-                    labelFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE')}
+                    labelFormatter={formatDateLong}
                   />
                   <Legend />
                   <Line type="monotone" dataKey="avg_weight" name="Ø Gewicht (kg)" stroke="#2563eb" strokeWidth={2} dot={{ r: 4 }} />
@@ -73,11 +74,11 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    tickFormatter={formatDateShort}
                   />
                   <YAxis />
                   <Tooltip
-                    labelFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE')}
+                    labelFormatter={formatDateLong}
                   />
                   <Legend />
                   <Line type="monotone" dataKey="total_reps" name="Gesamt Wdh." stroke="#9333ea" strokeWidth={2} dot={{ r: 4 }} />
@@ -96,7 +97,7 @@ export default function ProgressPage() {
                   <div key={i} className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">
-                        {new Date(d.date).toLocaleDateString('de-DE')}
+                        {formatDateLong(d.date)}
                       </span>
                       <span className="text-xs text-gray-500">{d.category_name || '—'}</span>
                     </div>

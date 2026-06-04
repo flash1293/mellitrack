@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import FormButton from '../components/ui/FormButton'
 import EmptyState from '../components/ui/EmptyState'
+import { formatDateFull } from '../utils/dates'
 import type { TrainingListItem } from '../../shared/types'
 
 export default function TrainingList() {
@@ -49,12 +50,7 @@ export default function TrainingList() {
             >
               <div className="flex-1">
                 <p className="font-medium">
-                  {new Date(t.date).toLocaleDateString('de-DE', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {formatDateFull(t.date)}
                 </p>
                 <p className="text-sm text-gray-500">
                   {t.category_name || '—'} · {t.exercise_count} Übungen
