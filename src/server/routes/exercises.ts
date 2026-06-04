@@ -69,18 +69,15 @@ app.put('/reorder', async (c) => {
   const userId = c.get('userId')
   const { ids }: { ids: number[] } = await c.req.json()
 
-  // Wrap reordering in a transaction for atomicity
-  await db.prepare('BEGIN').run()
+  // Use db.batch() for atomic multi-statement execution (D1 doesn't support BEGIN/COMMIT)
   try {
-    for (let i = 0; i < ids.length; i++) {
-      await db.prepare(
-        'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
-      ).bind(i, ids[i], userId).run()
-    }
-    await db.prepare('COMMIT').run()
+    const stmts = ids.map((id, i) =>
+      db.prepare('UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?')
+        .bind(i, id, userId)
+    )
+    await db.batch(stmts)
     return c.json({ success: true })
   } catch (error) {
-    await db.prepare('ROLLBACK').run()
     return c.json({ error: 'Database error: reorder failed' }, 500)
   }
 })
