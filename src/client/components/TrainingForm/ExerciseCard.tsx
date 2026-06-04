@@ -1,6 +1,7 @@
 import type { FormExerciseEntry } from '../../../shared/types'
 import SetRow from './SetRow'
 import TotalRepsSummary from './TotalRepsSummary'
+import FormButton from '../ui/FormButton'
 
 interface ExerciseCardProps {
   entry: FormExerciseEntry
@@ -28,14 +29,15 @@ export default function ExerciseCard({
       <div className="flex items-center justify-between">
         <span className="font-medium">{entry.exercise_name}</span>
         {!isEdit && (
-          <button
+          <FormButton
+            variant="ghost"
             onClick={() => onRemoveExercise(entryIndex)}
-            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-2 text-red-500"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </button>
+          </FormButton>
         )}
       </div>
 
@@ -53,12 +55,13 @@ export default function ExerciseCard({
 
       <TotalRepsSummary sets={entry.sets} />
 
-      <button
+      <FormButton
+        variant="secondary"
         onClick={() => onAddSet(entryIndex)}
-        className="w-full py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+        className="w-full py-2 text-sm text-blue-600 border-blue-200 hover:bg-blue-50"
       >
         + Satz hinzufügen
-      </button>
+      </FormButton>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import EmptyState from '../components/ui/EmptyState'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type { ExerciseWithCategories, ExerciseProgressRow, ProgressSetJson } from '../../shared/types'
 
@@ -36,10 +37,10 @@ export default function ProgressPage() {
       </div>
 
       {data.length < 2 ? (
-        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-          <p className="text-gray-500">Noch nicht genügend Daten für einen Chart</p>
-          <p className="text-sm text-gray-400 mt-2">Mindestens 2 Trainingseinheiten nötig</p>
-        </div>
+        <EmptyState
+          message="Noch nicht genügend Daten für einen Chart"
+          secondaryMessage="Mindestens 2 Trainingseinheiten nötig"
+        />
       ) : (
         <>
           <div className="bg-white rounded-xl shadow-sm p-4">
