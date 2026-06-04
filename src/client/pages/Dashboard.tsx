@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import FormButton from '../components/ui/FormButton'
 import EmptyState from '../components/ui/EmptyState'
+import ErrorBanner from '../components/ui/ErrorBanner'
 import { formatDateShort, formatDateLong } from '../utils/dates'
 import { groupProgressByCategory } from '../utils/grouping'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
@@ -120,10 +121,14 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [categories, setCategories] = useState<DashboardCategoryData[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     api.getAllProgress().then((rows: AllProgressRow[]) => {
       setCategories(groupProgressByCategory(rows))
+      setLoading(false)
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Daten')
       setLoading(false)
     })
   }, [])
@@ -138,6 +143,8 @@ export default function Dashboard() {
           + Training
         </FormButton>
       </div>
+
+      <ErrorBanner message={error} />
 
       {categories.length === 0 ? (
         <EmptyState

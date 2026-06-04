@@ -6,6 +6,7 @@ import DraftRestoreBanner from '../components/TrainingForm/DraftRestoreBanner'
 import DateCategoryPicker from '../components/TrainingForm/DateCategoryPicker'
 import ExerciseCard from '../components/TrainingForm/ExerciseCard'
 import EmptyState from '../components/ui/EmptyState'
+import ErrorBanner from '../components/ui/ErrorBanner'
 import SaveCancelButtons from '../components/TrainingForm/SaveCancelButtons'
 import type {
   ExerciseCategory,
@@ -26,6 +27,7 @@ export default function TrainingForm() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [showDraftRestored, setShowDraftRestored] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const loadingCategoryRef = useRef<number | null>(null)
   const userSelectedRef = useRef(false)
   const hasDataRef = useRef(false)
@@ -57,6 +59,8 @@ export default function TrainingForm() {
       if (cats.length > 0 && !isEdit && !userSelectedRef.current && !selectedCategoryRef.current) {
         setSelectedCategory(String(cats[0].id))
       }
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Kategorien')
     })
   }, [isEdit, selectedCategory])
 
@@ -72,6 +76,8 @@ export default function TrainingForm() {
           if (exData && exData.categories && exData.categories.length > 0) {
             setSelectedCategory(String(exData.categories[0].id))
           }
+        }).catch((err) => {
+          setError(err instanceof Error ? err.message : 'Fehler beim Laden der Übungen')
         })
       }
       setEntries(
@@ -94,6 +100,9 @@ export default function TrainingForm() {
           }),
         }))
       )
+      setLoading(false)
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden des Trainings')
       setLoading(false)
     })
   }, [id, isEdit])
@@ -148,8 +157,14 @@ export default function TrainingForm() {
 
   const loadExercisesForCategory = async (categoryId: number) => {
     loadingCategoryRef.current = categoryId
-    const exercises = await api.getExercisesByCategory(categoryId)
-    const lastTraining = await api.getLastCategoryTraining(categoryId)
+    let exercises, lastTraining
+    try {
+      exercises = await api.getExercisesByCategory(categoryId)
+      lastTraining = await api.getLastCategoryTraining(categoryId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Übungen')
+      return
+    }
 
     if (loadingCategoryRef.current !== categoryId) return
     if (restoredFromDraftRef.current) {
@@ -303,7 +318,7 @@ export default function TrainingForm() {
       .filter((e) => e.sets.length > 0)
 
     if (validEntries.length === 0) {
-      alert('Mindestens eine Übung mit Sätzen eingeben')
+      setError('Mindestens eine Übung mit Sätzen eingeben')
       return
     }
 
@@ -318,7 +333,7 @@ export default function TrainingForm() {
       navigate('/trainings')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
-      alert(message)
+      setError(message)
     } finally {
       setSaving(false)
     }
@@ -336,6 +351,8 @@ export default function TrainingForm() {
       {showDraftRestored && (
         <DraftRestoreBanner date={date} onDiscard={discardDraft} />
       )}
+
+      <ErrorBanner message={error} />
 
       <DateCategoryPicker
         date={date}

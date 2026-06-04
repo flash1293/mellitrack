@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import FormInput from '../components/ui/FormInput'
 import FormButton from '../components/ui/FormButton'
+import ErrorBanner from '../components/ui/ErrorBanner'
 import type { ExerciseCategory, ExerciseWithCategories } from '../../shared/types'
 
 export default function ExerciseList() {
   const navigate = useNavigate()
   const [exercises, setExercises] = useState<ExerciseWithCategories[]>([])
   const [categories, setCategories] = useState<ExerciseCategory[]>([])
+  const [error, setError] = useState<string | null>(null)
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseCategories, setNewExerciseCategories] = useState<number[]>([])
   const [newCategoryName, setNewCategoryName] = useState('')
@@ -22,51 +24,71 @@ export default function ExerciseList() {
   }, [])
 
   const loadData = () => {
-    api.getExercises().then((data) => setExercises(data))
+    api.getExercises().then((data) => setExercises(data)).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Übungen')
+    })
     api.getCategories().then((cats) => {
       setCategories(cats)
       if (cats.length > 0 && newExerciseCategories.length === 0) {
         setNewExerciseCategories([cats[0].id])
       }
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Kategorien')
     })
   }
 
   const handleAddExercise = async () => {
     if (!newExerciseName.trim() || newExerciseCategories.length === 0) return
-    await api.createExercise({
-      name: newExerciseName.trim(),
-      category_ids: newExerciseCategories,
-    })
-    setNewExerciseName('')
-    setNewExerciseCategories(categories.length > 0 ? [categories[0].id] : [])
-    setShowAddExercise(false)
-    loadData()
+    try {
+      await api.createExercise({
+        name: newExerciseName.trim(),
+        category_ids: newExerciseCategories,
+      })
+      setNewExerciseName('')
+      setNewExerciseCategories(categories.length > 0 ? [categories[0].id] : [])
+      setShowAddExercise(false)
+      loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Erstellen der Übung')
+    }
   }
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) return
-    await api.createCategory(newCategoryName.trim())
-    setNewCategoryName('')
-    setShowAddCategory(false)
-    loadData()
+    try {
+      await api.createCategory(newCategoryName.trim())
+      setNewCategoryName('')
+      setShowAddCategory(false)
+      loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Erstellen der Kategorie')
+    }
   }
 
   const handleUpdateExercise = async (id: number) => {
     if (!editName.trim()) return
-    const ex = exercises.find((e) => e.id === id)
-    await api.updateExercise(id, {
-      name: editName.trim(),
-      category_ids: ex?.categories?.map((c) => c.id) || [],
-    })
-    setEditingExercise(null)
-    setEditName('')
-    loadData()
+    try {
+      const ex = exercises.find((e) => e.id === id)
+      await api.updateExercise(id, {
+        name: editName.trim(),
+        category_ids: ex?.categories?.map((c) => c.id) || [],
+      })
+      setEditingExercise(null)
+      setEditName('')
+      loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Aktualisieren der Übung')
+    }
   }
 
   const handleDeleteExercise = async (id: number) => {
     if (!confirm('Übung wirklich löschen?')) return
-    await api.deleteExercise(id)
-    loadData()
+    try {
+      await api.deleteExercise(id)
+      loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Löschen der Übung')
+    }
   }
 
   const toggleCategory = (catId: number) => {
@@ -81,7 +103,12 @@ export default function ExerciseList() {
     if (swap < 0 || swap >= newCats.length) return
     ;[newCats[index], newCats[swap]] = [newCats[swap], newCats[index]]
     setCategories(newCats)
-    await api.reorderCategories(newCats.map((c) => c.id))
+    try {
+      await api.reorderCategories(newCats.map((c) => c.id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Sortieren')
+      loadData()
+    }
   }
 
   const moveExercise = async (catIndex: number, exIndex: number, direction: 'up' | 'down') => {
@@ -90,8 +117,13 @@ export default function ExerciseList() {
     const swap = direction === 'up' ? exIndex - 1 : exIndex + 1
     if (swap < 0 || swap >= ids.length) return
     ;[ids[exIndex], ids[swap]] = [ids[swap], ids[exIndex]]
-    await api.reorderExercises(ids)
-    loadData()
+    try {
+      await api.reorderExercises(ids)
+      loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Sortieren')
+      loadData()
+    }
   }
 
   // Group exercises by category for display
@@ -118,6 +150,8 @@ export default function ExerciseList() {
           </FormButton>
         </div>
       </div>
+
+      <ErrorBanner message={error} />
 
       {showAddCategory && (
         <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
