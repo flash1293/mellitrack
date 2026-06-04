@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import FormButton from '../components/ui/FormButton'
 import EmptyState from '../components/ui/EmptyState'
+import { formatDateShort, formatDateLong } from '../utils/dates'
+import { groupProgressByCategory } from '../utils/grouping'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type {
   AllProgressRow,
@@ -17,14 +19,6 @@ const COLORS = [
 interface ChartDataPoint {
   date: string
   [key: string]: string | number | null
-}
-
-function formatDateShort(d: string) {
-  return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
-}
-
-function formatDateLong(d: string) {
-  return new Date(d).toLocaleDateString('de-DE')
 }
 
 function buildChartData(category: DashboardCategoryData, metric: 'max_weight' | 'total_reps') {
@@ -129,31 +123,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     api.getAllProgress().then((rows: AllProgressRow[]) => {
-      const grouped = new Map<number, DashboardCategoryData>()
-      for (const row of rows) {
-        if (!grouped.has(row.category_id)) {
-          grouped.set(row.category_id, {
-            id: row.category_id,
-            name: row.category_name,
-            exercises: [],
-            dates: [],
-          })
-        }
-        const cat = grouped.get(row.category_id)!
-        let ex = cat.exercises.find((e) => e.id === row.exercise_id)
-        if (!ex) {
-          ex = { id: row.exercise_id, name: row.exercise_name, rows: [] }
-          cat.exercises.push(ex)
-        }
-        ex.rows.push(row)
-        if (!cat.dates.includes(row.date)) {
-          cat.dates.push(row.date)
-        }
-      }
-      for (const cat of grouped.values()) {
-        cat.dates.sort()
-      }
-      setCategories(Array.from(grouped.values()))
+      setCategories(groupProgressByCategory(rows))
       setLoading(false)
     })
   }, [])
