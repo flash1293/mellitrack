@@ -2,31 +2,19 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import type {
+  AllProgressRow,
+  DashboardCategoryData,
+} from '../../shared/types'
 
 const COLORS = [
   '#2563eb', '#dc2626', '#16a34a', '#d97706',
   '#9333ea', '#0891b2', '#be123c', '#059669',
 ]
 
-interface ProgressRow {
-  category_id: number
-  category_name: string
-  exercise_id: number
-  exercise_name: string
+interface ChartDataPoint {
   date: string
-  max_weight: number
-  total_reps: number
-}
-
-interface CategoryData {
-  id: number
-  name: string
-  exercises: {
-    id: number
-    name: string
-    rows: ProgressRow[]
-  }[]
-  dates: string[]
+  [key: string]: string | number | null
 }
 
 function formatDateShort(d: string) {
@@ -37,9 +25,9 @@ function formatDateLong(d: string) {
   return new Date(d).toLocaleDateString('de-DE')
 }
 
-function buildChartData(category: CategoryData, metric: 'max_weight' | 'total_reps') {
+function buildChartData(category: DashboardCategoryData, metric: 'max_weight' | 'total_reps') {
   return category.dates.map((date) => {
-    const point: any = { date }
+    const point: ChartDataPoint = { date }
     category.exercises.forEach((ex) => {
       const row = ex.rows.find((r) => r.date === date)
       point[`ex_${ex.id}`] = row ? row[metric] : null
@@ -48,7 +36,7 @@ function buildChartData(category: CategoryData, metric: 'max_weight' | 'total_re
   })
 }
 
-function CategoryChartSection({ category }: { category: CategoryData }) {
+function CategoryChartSection({ category }: { category: DashboardCategoryData }) {
   const weightData = buildChartData(category, 'max_weight')
   const repsData = buildChartData(category, 'total_reps')
   const hasData = category.dates.length >= 2
@@ -134,12 +122,12 @@ function CategoryChartSection({ category }: { category: CategoryData }) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [categories, setCategories] = useState<CategoryData[]>([])
+  const [categories, setCategories] = useState<DashboardCategoryData[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getAllProgress().then((rows: ProgressRow[]) => {
-      const grouped = new Map<number, CategoryData>()
+    api.getAllProgress().then((rows: AllProgressRow[]) => {
+      const grouped = new Map<number, DashboardCategoryData>()
       for (const row of rows) {
         if (!grouped.has(row.category_id)) {
           grouped.set(row.category_id, {

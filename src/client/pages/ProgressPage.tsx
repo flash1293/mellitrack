@@ -2,19 +2,20 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import type { ExerciseWithCategories, ExerciseProgressRow, ProgressSetJson } from '../../shared/types'
 
 export default function ProgressPage() {
   const { exerciseId } = useParams()
   const navigate = useNavigate()
-  const [data, setData] = useState<any[]>([])
-  const [exercise, setExercise] = useState<any>(null)
+  const [data, setData] = useState<ExerciseProgressRow[]>([])
+  const [exercise, setExercise] = useState<ExerciseWithCategories | null>(null)
 
   useEffect(() => {
     if (!exerciseId) return
-    api.getProgress(parseInt(exerciseId)).then((data: any[]) => setData(data))
-    api.getExercises().then((exs: any[]) => {
-      const ex = exs.find((e: any) => e.id === parseInt(exerciseId))
-      setExercise(ex)
+    api.getProgress(parseInt(exerciseId)).then((data) => setData(data))
+    api.getExercises().then((exs) => {
+      const ex = exs.find((e) => e.id === parseInt(exerciseId))
+      setExercise(ex || null)
     })
   }, [exerciseId])
 
@@ -49,11 +50,11 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    tickFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                   />
                   <YAxis />
                   <Tooltip
-                    labelFormatter={(d) => new Date(d).toLocaleDateString('de-DE')}
+                    labelFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE')}
                   />
                   <Legend />
                   <Line type="monotone" dataKey="avg_weight" name="Ø Gewicht (kg)" stroke="#2563eb" strokeWidth={2} dot={{ r: 4 }} />
@@ -71,11 +72,11 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    tickFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                   />
                   <YAxis />
                   <Tooltip
-                    labelFormatter={(d) => new Date(d).toLocaleDateString('de-DE')}
+                    labelFormatter={(d: string) => new Date(d).toLocaleDateString('de-DE')}
                   />
                   <Legend />
                   <Line type="monotone" dataKey="total_reps" name="Gesamt Wdh." stroke="#9333ea" strokeWidth={2} dot={{ r: 4 }} />
@@ -88,8 +89,8 @@ export default function ProgressPage() {
             <h3 className="font-semibold p-4 border-b border-gray-100">Historie</h3>
             <div className="divide-y divide-gray-100">
               {data.slice().reverse().map((d, i) => {
-                const sets: { set_number: number; weight: number; reps: number }[] =
-                  typeof d.sets === 'string' ? JSON.parse(d.sets) : d.sets || []
+                const sets: ProgressSetJson[] =
+                  typeof d.sets === 'string' ? JSON.parse(d.sets) : (d.sets as unknown as ProgressSetJson[] || [])
                 return (
                   <div key={i} className="p-4">
                     <div className="flex items-center justify-between mb-2">

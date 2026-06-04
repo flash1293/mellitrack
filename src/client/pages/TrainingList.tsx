@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import type { TrainingListItem } from '../../shared/types'
 
 export default function TrainingList() {
   const navigate = useNavigate()
-  const [trainings, setTrainings] = useState<any[]>([])
+  const [trainings, setTrainings] = useState<TrainingListItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getTrainings().then((data: any[]) => {
+    api.getTrainings().then((data) => {
       setTrainings(data)
       setLoading(false)
     })

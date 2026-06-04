@@ -9,13 +9,14 @@ import TrainingList from './pages/TrainingList'
 import TrainingForm from './pages/TrainingForm'
 import ExerciseList from './pages/ExerciseList'
 import ProgressPage from './pages/ProgressPage'
+import type { AuthCheckResponse } from '../shared/types'
 
 function App() {
   const [auth, setAuth] = useState<boolean | null>(null)
   const [username, setUsername] = useState<string>('')
 
   useEffect(() => {
-    api.checkAuth().then((r: any) => {
+    api.checkAuth().then((r: AuthCheckResponse) => {
       setAuth(r.authenticated)
       if (r.authenticated && r.username) {
         setUsername(r.username)
@@ -24,7 +25,7 @@ function App() {
   }, [])
 
   const handleLogin = () => {
-    api.checkAuth().then((r: any) => {
+    api.checkAuth().then((r: AuthCheckResponse) => {
       setAuth(r.authenticated)
       if (r.authenticated && r.username) {
         setUsername(r.username)
