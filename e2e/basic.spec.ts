@@ -155,7 +155,7 @@ test.describe('Mellitrack E2E', () => {
 
     // Change name - find the input that has the original value
     await page.locator(`input[value="${originalName}"]`).first().fill(newName)
-    await page.locator(`input[value="${newName}"]`).first().locator('xpath=..').locator('button').first().click()
+    await page.locator(`input[value="${newName}"]`).first().press('Enter')
 
     // Should show new name
     await expect(page.getByRole('button', { name: newName }).first()).toBeVisible()
