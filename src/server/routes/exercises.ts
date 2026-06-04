@@ -68,18 +68,12 @@ app.put('/reorder', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const { ids }: { ids: number[] } = await c.req.json()
-
-  // Use db.batch() for atomic multi-statement execution (D1 doesn't support BEGIN/COMMIT)
-  try {
-    const stmts = ids.map((id, i) =>
-      db.prepare('UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?')
-        .bind(i, id, userId)
-    )
-    await db.batch(stmts)
-    return c.json({ success: true })
-  } catch (error) {
-    return c.json({ error: 'Database error: reorder failed' }, 500)
+  for (let i = 0; i < ids.length; i++) {
+    await db.prepare(
+      'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
+    ).bind(i, ids[i], userId).run()
   }
+  return c.json({ success: true })
 })
 
 app.put('/:id', async (c) => {
