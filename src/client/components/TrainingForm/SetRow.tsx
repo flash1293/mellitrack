@@ -31,7 +31,7 @@ function inputClasses(set: FormSet, field: 'weight' | 'reps') {
   const compareField = field === 'weight' ? 'previous_weight' : 'previous_reps'
   return `${getComparisonColor(set[field], set[compareField])} ${
     isChanged(set, field) || isTouched(set, field)
-      ? 'border-l-4 border-l-blue-500 !border-gray-300'
+      ? 'border-l-4 border-l-blue-500'
       : ''
   }`
 }

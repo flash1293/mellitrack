@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, forwardRef } from 'react'
+import { InputHTMLAttributes, forwardRef, useId } from 'react'
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -10,7 +10,8 @@ const baseClasses =
 
 const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
   ({ label, error, className = '', id, ...props }, ref) => {
-    const inputId = id || props.name
+    const generatedId = useId()
+    const inputId = id || props.name || generatedId
     return (
       <div>
         {label && (

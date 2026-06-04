@@ -35,6 +35,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormInput
             label="Benutzername"
+            name="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -43,6 +44,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
           />
           <FormInput
             label="Passwort"
+            name="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
