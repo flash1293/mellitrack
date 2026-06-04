@@ -28,7 +28,8 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   })
   if (res.status === 401) {
     if (!path.startsWith('/auth') && window.location.pathname !== '/login') {
-      window.location.href = '/login'
+      // Dispatch a custom event so App.tsx can set auth state without a full page reload
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     const err = await res.json().catch(() => ({})) as { error?: string }
     throw new Error(err.error || 'Unauthorized')

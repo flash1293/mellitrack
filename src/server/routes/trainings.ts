@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env, Variables } from '../index'
 import type { LastCategoryExerciseGroup, LastCategorySet } from '../../shared/types'
+import { validateString, validateNumber } from '../validate'
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -220,6 +221,31 @@ app.put('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json() as { date: string; category_id?: number; exercises: { exercise_id: number; sets: { set_number: number; weight: number; reps: number }[] }[] }
 
+  // Validate
+  if (isNaN(id)) return c.json({ error: 'id must be a number' }, 400)
+  const dateErr = validateString(body.date, 'date')
+  if (dateErr) return c.json({ error: dateErr }, 400)
+  if (body.category_id !== undefined) {
+    const catErr = validateNumber(body.category_id, 'category_id')
+    if (catErr) return c.json({ error: catErr }, 400)
+  }
+  if (!Array.isArray(body.exercises) || body.exercises.length === 0) {
+    return c.json({ error: 'exercises must be a non-empty array' }, 400)
+  }
+  for (const ex of body.exercises) {
+    if (typeof ex.exercise_id !== 'number') {
+      return c.json({ error: 'each exercise must have a numeric exercise_id' }, 400)
+    }
+    if (!Array.isArray(ex.sets)) {
+      return c.json({ error: 'each exercise must have a sets array' }, 400)
+    }
+    for (const s of ex.sets) {
+      if (typeof s.set_number !== 'number' || typeof s.weight !== 'number' || typeof s.reps !== 'number') {
+        return c.json({ error: 'each set must have set_number, weight, and reps as numbers' }, 400)
+      }
+    }
+  }
+
   // Verify ownership
   const existing = await db.prepare('SELECT id FROM trainings WHERE id = ? AND user_id = ?').bind(id, userId).first()
   if (!existing) {
@@ -260,6 +286,28 @@ app.post('/', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const { date, category_id, exercises } = await c.req.json() as { date: string; category_id: number; exercises: { exercise_id: number; sets: { set_number: number; weight: number; reps: number }[] }[] }
+
+  // Validate
+  const dateErr = validateString(date, 'date')
+  if (dateErr) return c.json({ error: dateErr }, 400)
+  const catErr = validateNumber(category_id, 'category_id')
+  if (catErr) return c.json({ error: catErr }, 400)
+  if (!Array.isArray(exercises) || exercises.length === 0) {
+    return c.json({ error: 'exercises must be a non-empty array' }, 400)
+  }
+  for (const ex of exercises) {
+    if (typeof ex.exercise_id !== 'number') {
+      return c.json({ error: 'each exercise must have a numeric exercise_id' }, 400)
+    }
+    if (!Array.isArray(ex.sets)) {
+      return c.json({ error: 'each exercise must have a sets array' }, 400)
+    }
+    for (const s of ex.sets) {
+      if (typeof s.set_number !== 'number' || typeof s.weight !== 'number' || typeof s.reps !== 'number') {
+        return c.json({ error: 'each set must have set_number, weight, and reps as numbers' }, 400)
+      }
+    }
+  }
 
   // Single query to validate all exercises (instead of N queries)
   const placeholders = exercises.map(() => '?').join(', ')
