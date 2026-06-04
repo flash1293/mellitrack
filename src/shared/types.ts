@@ -25,7 +25,6 @@ export interface ExerciseCategory {
 export interface Exercise {
   id: number
   name: string
-  category_id: number | null
   user_id: number
   deleted_at: string | null
   sort_order: number

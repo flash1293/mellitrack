@@ -18,19 +18,19 @@ INSERT INTO exercise_categories (id, name, user_id) VALUES
   (3, 'Ganzkörper', 1);
 
 -- Seed 4 exercises per category
-INSERT INTO exercises (id, name, category_id, user_id) VALUES
-  (1, 'Bankdrücken', 1, 1),
-  (2, 'Klimmzüge', 1, 1),
-  (3, 'Schulterdrücken', 1, 1),
-  (4, 'Dips', 1, 1),
-  (5, 'Kniebeugen', 2, 1),
-  (6, 'Kreuzheben', 2, 1),
-  (7, 'Ausfallschritte', 2, 1),
-  (8, 'Wadenheben', 2, 1),
-  (9, 'Burpees', 3, 1),
-  (10, 'Kettlebell Swings', 3, 1),
-  (11, 'Thrusters', 3, 1),
-  (12, 'Turkish Get-Up', 3, 1);
+INSERT INTO exercises (id, name, user_id) VALUES
+  (1, 'Bankdrücken', 1),
+  (2, 'Klimmzüge', 1),
+  (3, 'Schulterdrücken', 1),
+  (4, 'Dips', 1),
+  (5, 'Kniebeugen', 1),
+  (6, 'Kreuzheben', 1),
+  (7, 'Ausfallschritte', 1),
+  (8, 'Wadenheben', 1),
+  (9, 'Burpees', 1),
+  (10, 'Kettlebell Swings', 1),
+  (11, 'Thrusters', 1),
+  (12, 'Turkish Get-Up', 1);
 
 -- Map exercises to categories (many-to-many)
 INSERT INTO exercise_category_mappings (exercise_id, category_id) VALUES

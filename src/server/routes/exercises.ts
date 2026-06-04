@@ -29,7 +29,6 @@ app.get('/', async (c) => {
   const exercises: ExerciseWithCategories[] = (results as unknown as ExerciseRow[]).map((r) => ({
     id: r.id,
     name: r.name,
-    category_id: null,
     user_id: userId,
     deleted_at: r.deleted_at || null,
     sort_order: 0,
@@ -49,8 +48,8 @@ app.post('/', async (c) => {
   const { name, category_ids }: { name: string; category_ids: number[] } = await c.req.json()
 
   const { meta } = await db.prepare(
-    'INSERT INTO exercises (name, category_id, user_id, sort_order) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercises WHERE user_id = ?))'
-  ).bind(name, category_ids[0] || 1, userId, userId).run()
+    'INSERT INTO exercises (name, user_id, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercises WHERE user_id = ?))'
+  ).bind(name, userId, userId).run()
   const exerciseId = meta.last_row_id
 
   for (const catId of category_ids) {
