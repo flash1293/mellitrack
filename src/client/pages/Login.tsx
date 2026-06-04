@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../api'
+import FormInput from '../components/ui/FormInput'
+import FormButton from '../components/ui/FormButton'
+import ErrorBanner from '../components/ui/ErrorBanner'
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
   const navigate = useNavigate()
@@ -30,41 +33,29 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
       <div className="w-full max-w-sm bg-white rounded-xl shadow-lg p-6">
         <h1 className="text-2xl font-bold text-center mb-6">Mellitrack</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Benutzername
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="Benutzername"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Passwort
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="Passwort"
-            />
-          </div>
-          {error && (
-            <p className="text-red-600 text-sm">{error}</p>
-          )}
-          <button
+          <FormInput
+            label="Benutzername"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Benutzername"
+            autoFocus
+          />
+          <FormInput
+            label="Passwort"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Passwort"
+          />
+          <ErrorBanner message={error} />
+          <FormButton
             type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition-colors"
+            loading={loading}
+            className="w-full"
           >
-            {loading ? '...' : 'Anmelden'}
-          </button>
+            Anmelden
+          </FormButton>
         </form>
         <p className="mt-4 text-center text-sm text-gray-600">
           Noch kein Konto?{' '}

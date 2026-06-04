@@ -1,3 +1,5 @@
+import FormButton from '../ui/FormButton'
+
 interface DraftRestoreBannerProps {
   date: string
   onDiscard: () => void
@@ -11,12 +13,9 @@ export default function DraftRestoreBanner({ date, onDiscard }: DraftRestoreBann
         Deine Eingaben sind sicher und werden fortlaufend gespeichert.
       </p>
       <div className="flex gap-2">
-        <button
-          onClick={onDiscard}
-          className="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg hover:bg-amber-100 transition-colors"
-        >
+        <FormButton variant="secondary" onClick={onDiscard} className="px-4 py-2 text-sm border-amber-300 text-amber-700 hover:bg-amber-100">
           Entwurf verwerfen
-        </button>
+        </FormButton>
       </div>
     </div>
   )

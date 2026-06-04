@@ -1,4 +1,5 @@
 import type { ExerciseCategory } from '../../../shared/types'
+import FormInput from '../ui/FormInput'
 
 interface DateCategoryPickerProps {
   date: string
@@ -19,15 +20,12 @@ export default function DateCategoryPicker({
 }: DateCategoryPickerProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Datum</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => onDateChange(e.target.value)}
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
-      </div>
+      <FormInput
+        label="Datum"
+        type="date"
+        value={date}
+        onChange={(e) => onDateChange(e.target.value)}
+      />
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
         <select

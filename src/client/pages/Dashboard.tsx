@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import FormButton from '../components/ui/FormButton'
+import EmptyState from '../components/ui/EmptyState'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type {
   AllProgressRow,
@@ -162,24 +164,18 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Dashboard</h2>
-        <button
-          onClick={() => navigate('/trainings/new')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 active:bg-blue-800 transition-colors"
-        >
+        <FormButton onClick={() => navigate('/trainings/new')}>
           + Training
-        </button>
+        </FormButton>
       </div>
 
       {categories.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-          <p className="text-gray-500 mb-4">Noch keine Trainingsdaten vorhanden</p>
-          <button
-            onClick={() => navigate('/trainings/new')}
-            className="text-blue-600 font-medium"
-          >
-            Erstes Training eintragen
-          </button>
-        </div>
+        <EmptyState
+          icon="💪"
+          message="Noch keine Trainingsdaten vorhanden"
+          ctaText="Erstes Training eintragen"
+          onCtaClick={() => navigate('/trainings/new')}
+        />
       ) : (
         <div className="space-y-8">
           {categories.map((cat) => (

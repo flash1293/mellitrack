@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import FormInput from '../components/ui/FormInput'
+import FormButton from '../components/ui/FormButton'
 import type { ExerciseCategory, ExerciseWithCategories } from '../../shared/types'
 
 export default function ExerciseList() {
@@ -105,44 +107,38 @@ export default function ExerciseList() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Übungen</h2>
         <div className="flex gap-2">
-          <button
+          <FormButton
+            variant="secondary"
             onClick={() => setShowAddCategory(!showAddCategory)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             + Kategorie
-          </button>
-          <button
-            onClick={() => setShowAddExercise(!showAddExercise)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 active:bg-blue-800 transition-colors"
-          >
+          </FormButton>
+          <FormButton onClick={() => setShowAddExercise(!showAddExercise)}>
             + Übung
-          </button>
+          </FormButton>
         </div>
       </div>
 
       {showAddCategory && (
         <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
           <h3 className="font-medium">Neue Kategorie</h3>
-          <input
+          <FormInput
             type="text"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder="Kategorie Name"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <div className="flex gap-2">
-            <button
+            <FormButton
+              variant="secondary"
               onClick={() => setShowAddCategory(false)}
-              className="flex-1 py-2 border border-gray-300 rounded-lg"
+              className="flex-1"
             >
               Abbrechen
-            </button>
-            <button
-              onClick={handleAddCategory}
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium"
-            >
+            </FormButton>
+            <FormButton onClick={handleAddCategory} className="flex-1">
               Hinzufügen
-            </button>
+            </FormButton>
           </div>
         </div>
       )}
@@ -150,12 +146,11 @@ export default function ExerciseList() {
       {showAddExercise && (
         <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
           <h3 className="font-medium">Neue Übung</h3>
-          <input
+          <FormInput
             type="text"
             value={newExerciseName}
             onChange={(e) => setNewExerciseName(e.target.value)}
             placeholder="Übungsname"
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <div>
             <p className="text-sm text-gray-600 mb-2">Kategorien</p>
@@ -176,18 +171,16 @@ export default function ExerciseList() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
+            <FormButton
+              variant="secondary"
               onClick={() => setShowAddExercise(false)}
-              className="flex-1 py-2 border border-gray-300 rounded-lg"
+              className="flex-1"
             >
               Abbrechen
-            </button>
-            <button
-              onClick={handleAddExercise}
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium"
-            >
+            </FormButton>
+            <FormButton onClick={handleAddExercise} className="flex-1">
               Hinzufügen
-            </button>
+            </FormButton>
           </div>
         </div>
       )}
@@ -223,12 +216,12 @@ export default function ExerciseList() {
                   >
                     {editingExercise === ex.id ? (
                       <div className="flex items-center gap-2 flex-1">
-                        <input
+                        <FormInput
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
                           autoFocus
+                          className="flex-1"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleUpdateExercise(ex.id)
                             if (e.key === 'Escape') {
@@ -237,25 +230,27 @@ export default function ExerciseList() {
                             }
                           }}
                         />
-                        <button
+                        <FormButton
+                          variant="ghost"
                           onClick={() => handleUpdateExercise(ex.id)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                          className="p-2 text-green-600"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                        </button>
-                        <button
+                        </FormButton>
+                        <FormButton
+                          variant="ghost"
                           onClick={() => {
                             setEditingExercise(null)
                             setEditName('')
                           }}
-                          className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                          className="p-2"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
-                        </button>
+                        </FormButton>
                       </div>
                     ) : (
                       <>
@@ -286,28 +281,30 @@ export default function ExerciseList() {
                               Gelöscht
                             </span>
                           ) : (
-                            <button
+                            <FormButton
+                              variant="ghost"
                               onClick={() => handleDeleteExercise(ex.id)}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2 text-red-500"
                               aria-label="Löschen"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
-                            </button>
+                            </FormButton>
                           )}
-                          <button
+                          <FormButton
+                            variant="ghost"
                             onClick={() => {
                               setEditingExercise(ex.id)
                               setEditName(ex.name)
                             }}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-gray-400"
                             aria-label="Bearbeiten"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
-                          </button>
+                          </FormButton>
                         </div>
                       </>
                     )}

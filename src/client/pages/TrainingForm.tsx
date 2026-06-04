@@ -5,7 +5,7 @@ import { loadDraft, saveDraft, clearDraft } from '../components/TrainingForm/dra
 import DraftRestoreBanner from '../components/TrainingForm/DraftRestoreBanner'
 import DateCategoryPicker from '../components/TrainingForm/DateCategoryPicker'
 import ExerciseCard from '../components/TrainingForm/ExerciseCard'
-import EmptyState from '../components/TrainingForm/EmptyState'
+import EmptyState from '../components/ui/EmptyState'
 import SaveCancelButtons from '../components/TrainingForm/SaveCancelButtons'
 import type {
   ExerciseCategory,
@@ -353,7 +353,7 @@ export default function TrainingForm() {
       />
 
       {showEmpty ? (
-        <EmptyState />
+        <EmptyState message="Keine Übungen in dieser Kategorie" />
       ) : (
         entries.map((entry, ei) => (
           <ExerciseCard
