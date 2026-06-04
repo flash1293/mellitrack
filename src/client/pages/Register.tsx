@@ -5,7 +5,7 @@ import FormInput from '../components/ui/FormInput'
 import FormButton from '../components/ui/FormButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 
-export default function Register({ onLogin }: { onLogin: () => void }) {
+export default function Register({ onLogin }: { onLogin: (username: string) => void }) {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -26,7 +26,7 @@ export default function Register({ onLogin }: { onLogin: () => void }) {
 
     try {
       await api.register(username, password)
-      onLogin()
+      onLogin(username)
       navigate('/')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed'

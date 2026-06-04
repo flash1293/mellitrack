@@ -5,7 +5,7 @@ import FormInput from '../components/ui/FormInput'
 import FormButton from '../components/ui/FormButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 
-export default function Login({ onLogin }: { onLogin: () => void }) {
+export default function Login({ onLogin }: { onLogin: (username: string) => void }) {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -18,7 +18,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
     setError('')
     try {
       await api.login(username, password)
-      onLogin()
+      onLogin(username)
       navigate('/')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed'

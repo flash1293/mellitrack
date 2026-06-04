@@ -137,13 +137,18 @@ export default function TrainingForm() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [date, selectedCategory, entries, isEdit, id])
 
-  // --- Save draft: immediate save on every data change (no debounce) ---
+  // --- Save draft: debounced save on data change (avoid writing on every keystroke) ---
   useEffect(() => {
     if (!hasDataRef.current && entries.some(e => e.sets.some(s => s.weight || s.reps))) {
       hasDataRef.current = true
     }
     if (!hasDataRef.current) return
-    saveDraft(date, selectedCategory, entries, isEdit, id)
+
+    const timer = setTimeout(() => {
+      saveDraft(date, selectedCategory, entries, isEdit, id)
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [date, selectedCategory, entries, isEdit, id])
 
   // --- Load exercises when category changes ---

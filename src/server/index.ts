@@ -18,8 +18,15 @@ export type Variables = {
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
+// CORS: frontend and API are same-origin (served by the same Worker),
+// so credentials: true + wildcard origin is not needed.
+// Explicitly allow the known production origin when present.
+const ALLOWED_ORIGIN = typeof self !== 'undefined' && self.location?.origin
+  ? self.location.origin
+  : '*'
+
 app.use('/api/*', cors({
-  origin: '*',
+  origin: ALLOWED_ORIGIN,
   credentials: true,
 }))
 

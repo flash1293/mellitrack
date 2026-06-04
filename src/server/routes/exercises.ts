@@ -1,6 +1,11 @@
 import { Hono } from 'hono'
 import type { Env, Variables } from '../index'
 import type { ExerciseWithCategories } from '../../shared/types'
+import {
+  validateString,
+  validateNumberArray,
+  validateOptionalNumberArray,
+} from '../validate'
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -47,6 +52,12 @@ app.post('/', async (c) => {
   const userId = c.get('userId')
   const { name, category_ids }: { name: string; category_ids: number[] } = await c.req.json()
 
+  // Validate
+  const nameErr = validateString(name, 'name')
+  if (nameErr) return c.json({ error: nameErr }, 400)
+  const catErr = validateNumberArray(category_ids, 'category_ids')
+  if (catErr) return c.json({ error: catErr }, 400)
+
   const { meta } = await db.prepare(
     'INSERT INTO exercises (name, user_id, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercises WHERE user_id = ?))'
   ).bind(name, userId, userId).run()
@@ -67,6 +78,10 @@ app.put('/reorder', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const { ids }: { ids: number[] } = await c.req.json()
+
+  const idsErr = validateNumberArray(ids, 'ids')
+  if (idsErr) return c.json({ error: idsErr }, 400)
+
   for (let i = 0; i < ids.length; i++) {
     await db.prepare(
       'UPDATE exercises SET sort_order = ? WHERE id = ? AND user_id = ?'
@@ -80,6 +95,12 @@ app.put('/:id', async (c) => {
   const userId = c.get('userId')
   const id = c.req.param('id')
   const { name, category_ids }: { name: string; category_ids?: number[] } = await c.req.json()
+
+  // Validate
+  const nameErr = validateString(name, 'name')
+  if (nameErr) return c.json({ error: nameErr }, 400)
+  const catErr = validateOptionalNumberArray(category_ids, 'category_ids')
+  if (catErr) return c.json({ error: catErr }, 400)
 
   // Verify ownership
   const existing = await db.prepare('SELECT id FROM exercises WHERE id = ? AND user_id = ?').bind(id, userId).first()
@@ -146,6 +167,10 @@ app.put('/categories/reorder', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const { ids }: { ids: number[] } = await c.req.json()
+
+  const idsErr = validateNumberArray(ids, 'ids')
+  if (idsErr) return c.json({ error: idsErr }, 400)
+
   for (let i = 0; i < ids.length; i++) {
     await db.prepare(
       'UPDATE exercise_categories SET sort_order = ? WHERE id = ? AND user_id = ?'
@@ -158,6 +183,10 @@ app.post('/categories', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const { name }: { name: string } = await c.req.json()
+
+  const nameErr = validateString(name, 'name')
+  if (nameErr) return c.json({ error: nameErr }, 400)
+
   const { success } = await db.prepare(
     'INSERT INTO exercise_categories (name, user_id, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM exercise_categories WHERE user_id = ?))'
   ).bind(name, userId, userId).run()

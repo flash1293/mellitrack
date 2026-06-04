@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { setCookie, deleteCookie, getCookie } from 'hono/cookie'
 import type { Env } from '../index'
+import { validateString } from '../validate'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -16,9 +17,10 @@ app.post('/register', async (c) => {
   const db = c.env.DB
   const { username, password } = await c.req.json()
 
-  if (!username || !password) {
-    return c.json({ error: 'Username and password required' }, 400)
-  }
+  const usernameErr = validateString(username, 'username')
+  if (usernameErr) return c.json({ error: usernameErr }, 400)
+  const passwordErr = validateString(password, 'password')
+  if (passwordErr) return c.json({ error: passwordErr }, 400)
 
   if (password.length < 4) {
     return c.json({ error: 'Password must be at least 4 characters' }, 400)
@@ -59,9 +61,10 @@ app.post('/login', async (c) => {
   const db = c.env.DB
   const { username, password } = await c.req.json()
 
-  if (!username || !password) {
-    return c.json({ error: 'Username and password required' }, 400)
-  }
+  const usernameErr = validateString(username, 'username')
+  if (usernameErr) return c.json({ error: usernameErr }, 400)
+  const passwordErr = validateString(password, 'password')
+  if (passwordErr) return c.json({ error: passwordErr }, 400)
 
   const passwordHash = await hashPassword(password)
   const user = await db.prepare(

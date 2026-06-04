@@ -3,7 +3,12 @@
 
 generate_data_uri() {
   local svg="$1"
-  local base64=$(echo -n "$svg" | base64 -w0)
+  # macOS uses -b0, Linux uses -w0
+  if [[ "$(uname)" == "Darwin" ]]; then
+    local base64=$(echo -n "$svg" | base64 -b0)
+  else
+    local base64=$(echo -n "$svg" | base64 -w0)
+  fi
   echo "url(\"data:image/svg+xml;base64,${base64}\")"
 }
 

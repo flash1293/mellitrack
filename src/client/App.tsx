@@ -25,18 +25,16 @@ function App() {
       console.error('Auth check failed:', err)
       setAuth(false)
     })
+
+    // Listen for session expiry — React Router handles the redirect
+    const handleUnauthorized = () => setAuth(false)
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized)
   }, [])
 
-  const handleLogin = () => {
-    api.checkAuth().then((r: AuthCheckResponse) => {
-      setAuth(r.authenticated)
-      if (r.authenticated && r.username) {
-        setUsername(r.username)
-      }
-    }).catch((err) => {
-      console.error('Auth re-check failed:', err)
-      setAuth(false)
-    })
+  const handleLogin = (user: string) => {
+    setAuth(true)
+    setUsername(user)
   }
 
   if (auth === null) return <div className="p-8 text-center">Loading...</div>
