@@ -174,12 +174,19 @@ function handleSelect(sql: string, bindings: unknown[]): MockD1Result {
   }
 
   // Handle GROUP BY (just return rows as-is for mock)
-  // Handle ORDER BY and LIMIT
-  rows = applyOrderByAndLimit(sql, rows)
 
-  // Map column aliases and expressions
+  // Handle COUNT(*) aggregate (used by COUNT(*) as count queries)
   const selectMatch = sql.match(/SELECT\s+(.+?)\s+FROM/i)
   const selectColumns = selectMatch?.[1]?.trim() || '*'
+
+  if (/^COUNT\s*\(\*\)/i.test(selectColumns)) {
+    const aliasMatch = selectColumns.match(/as\s+(\w+)/i)
+    const alias = aliasMatch?.[1] || 'count'
+    return new MockD1Result([{ [alias]: rows.length }])
+  }
+
+  // Handle ORDER BY and LIMIT
+  rows = applyOrderByAndLimit(sql, rows)
 
   if (selectColumns === '*') {
     return new MockD1Result(rows)
@@ -245,9 +252,9 @@ function handleJoinSelect(sql: string, bindings: unknown[]): MockD1Result {
         id: (ex as any).id,
         name: (ex as any).name,
         deleted_at: (ex as any).deleted_at,
-        category_names: catNames.join(','),
-        category_ids: catIds.join(','),
-        category_sort_orders: catSortOrders.join(','),
+        category_names: JSON.stringify(catNames),
+        category_ids: JSON.stringify(catIds),
+        category_sort_orders: JSON.stringify(catSortOrders),
       }
     }))
   }
@@ -574,7 +581,8 @@ function handleInsert(sql: string, bindings: unknown[]): MockD1Result {
   // Ensure all columns have defaults
   for (const col of table.columns) {
     if (row[col] === undefined) {
-      row[col] = null
+      // Columns named 'sort_order' default to 0 (matching SQL schema)
+      row[col] = (col === 'sort_order') ? 0 : null
     }
   }
 

@@ -24,9 +24,9 @@ app.get('/', async (c) => {
   const userId = c.get('userId')
   const { results } = await db.prepare(`
     SELECT e.id, e.name, e.deleted_at,
-      GROUP_CONCAT(c.name) as category_names,
-      GROUP_CONCAT(c.id) as category_ids,
-      GROUP_CONCAT(m.sort_order) as category_sort_orders
+      json_group_array(c.name) FILTER (WHERE c.id IS NOT NULL) as category_names,
+      json_group_array(c.id) FILTER (WHERE c.id IS NOT NULL) as category_ids,
+      json_group_array(m.sort_order) FILTER (WHERE c.id IS NOT NULL) as category_sort_orders
     FROM exercises e
     LEFT JOIN exercise_category_mappings m ON e.id = m.exercise_id
     LEFT JOIN exercise_categories c ON m.category_id = c.id
@@ -35,22 +35,23 @@ app.get('/', async (c) => {
     ORDER BY e.name
   `).bind(userId).all()
 
-  const exercises: ExerciseWithCategories[] = (results as unknown as ExerciseRow[]).map((r) => ({
-    id: r.id,
-    name: r.name,
-    user_id: userId,
-    deleted_at: r.deleted_at || null,
-    sort_order: 0,
-    categories: r.category_ids
-      ? r.category_ids.split(',').map((id: string, i: number) => ({
-          id: parseInt(id),
-          name: r.category_names!.split(',')[i],
-          sort_order: r.category_sort_orders
-            ? parseInt(r.category_sort_orders.split(',')[i])
-            : 0,
-        }))
-      : [],
-  }))
+  const exercises: ExerciseWithCategories[] = (results as unknown as ExerciseRow[]).map((r) => {
+    const catIds = JSON.parse(r.category_ids || '[]') as number[]
+    const catNames = JSON.parse(r.category_names || '[]') as string[]
+    const catSortOrders = JSON.parse(r.category_sort_orders || '[]') as number[]
+    return {
+      id: r.id,
+      name: r.name,
+      user_id: userId,
+      deleted_at: r.deleted_at || null,
+      sort_order: 0,
+      categories: catIds.map((id: number, i: number) => ({
+        id,
+        name: catNames[i],
+        sort_order: catSortOrders[i] ?? 0,
+      })),
+    }
+  })
   return c.json(exercises)
 })
 
@@ -64,6 +65,16 @@ app.post('/', async (c) => {
   if (nameErr) return c.json({ error: nameErr }, 400)
   const catErr = validateNumberArray(category_ids, 'category_ids')
   if (catErr) return c.json({ error: catErr }, 400)
+
+  // Verify all categories belong to the user
+  if (category_ids.length > 0) {
+    const catCheck = await db.prepare(
+      `SELECT COUNT(*) as count FROM exercise_categories WHERE id IN (${category_ids.map(() => '?').join(',')}) AND user_id = ?`
+    ).bind(...category_ids, userId).first<{ count: number }>()
+    if (!catCheck || catCheck.count !== category_ids.length) {
+      return c.json({ error: 'One or more categories not found' }, 404)
+    }
+  }
 
   const { meta } = await db.prepare(
     'INSERT INTO exercises (name, user_id) VALUES (?, ?)'
@@ -102,6 +113,16 @@ app.put('/reorder', async (c) => {
   ).bind(category_id, userId).first()
   if (!cat) return c.json({ error: 'Category not found' }, 404)
 
+  // Verify all exercise_ids are mapped to this category
+  if (ids.length > 0) {
+    const mappedCheck = await db.prepare(
+      `SELECT COUNT(*) as count FROM exercise_category_mappings WHERE category_id = ? AND exercise_id IN (${ids.map(() => '?').join(',')})`
+    ).bind(category_id, ...ids).first<{ count: number }>()
+    if (!mappedCheck || mappedCheck.count !== ids.length) {
+      return c.json({ error: 'Some exercises are not mapped to this category' }, 400)
+    }
+  }
+
   for (let i = 0; i < ids.length; i++) {
     await db.prepare(
       'UPDATE exercise_category_mappings SET sort_order = ? WHERE exercise_id = ? AND category_id = ?'
@@ -133,9 +154,12 @@ app.put('/:id', async (c) => {
   if (category_ids) {
     await db.prepare('DELETE FROM exercise_category_mappings WHERE exercise_id = ?').bind(id).run()
     for (const catId of category_ids) {
+      const maxSort = await db.prepare(
+        'SELECT COALESCE(MAX(m.sort_order), -1) + 1 as next_sort FROM exercise_category_mappings m WHERE m.category_id = ?'
+      ).bind(catId).first<{ next_sort: number }>()
       await db.prepare(
-        'INSERT OR IGNORE INTO exercise_category_mappings (exercise_id, category_id) VALUES (?, ?)'
-      ).bind(id, catId).run()
+        'INSERT OR IGNORE INTO exercise_category_mappings (exercise_id, category_id, sort_order) VALUES (?, ?, ?)'
+      ).bind(id, catId, maxSort?.next_sort ?? 0).run()
     }
   }
 
