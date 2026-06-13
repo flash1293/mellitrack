@@ -30,8 +30,14 @@ export interface Exercise {
   sort_order: number
 }
 
+export interface ExerciseCategoryInfo {
+  id: number
+  name: string
+  sort_order: number
+}
+
 export interface ExerciseWithCategories extends Exercise {
-  categories: { id: number; name: string }[]
+  categories: ExerciseCategoryInfo[]
 }
 
 export interface Training {

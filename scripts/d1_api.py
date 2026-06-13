@@ -52,7 +52,17 @@ def cmd_query():
     with open(sql_file) as f:
         sql = f.read()
     payload = json.dumps({"sql": sql}).encode()
-    result = api_call(api_url(f"/{db_id}/query"), method="POST", data=payload)
+    try:
+        result = api_call(api_url(f"/{db_id}/query"), method="POST", data=payload)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        err_msg = body.lower()
+        # Ignore "duplicate column" errors — migration already applied
+        if "duplicate column" in err_msg:
+            print(f"  ⚠ Column already exists (migration already applied), continuing")
+            return
+        print(f"Error: HTTP {e.code} - {body}", file=sys.stderr)
+        sys.exit(1)
     if result.get("success"):
         for r in result.get("result", []):
             print(f"  rows: {len(r.get('results', []))}, changes: {r['meta']['changes']}")

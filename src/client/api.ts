@@ -67,8 +67,8 @@ export const api = {
     fetchApi<SuccessResponse>('/exercises/categories', { method: 'POST', body: JSON.stringify({ name }) }),
   reorderCategories: (ids: number[]) =>
     fetchApi<SuccessResponse>('/exercises/categories/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
-  reorderExercises: (ids: number[]) =>
-    fetchApi<SuccessResponse>('/exercises/reorder', { method: 'PUT', body: JSON.stringify({ ids }) }),
+  reorderExercises: (categoryId: number, ids: number[]) =>
+    fetchApi<SuccessResponse>('/exercises/reorder', { method: 'PUT', body: JSON.stringify({ ids, category_id: categoryId }) }),
   getExercisesByCategory: (categoryId: number) =>
     fetchApi<ExerciseInCategory[]>(`/exercises/by-category/${categoryId}`),
 
