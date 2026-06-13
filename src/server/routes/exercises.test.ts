@@ -143,7 +143,7 @@ describe('Exercises Routes', () => {
       )
 
       const res = await app.request(
-        createRequest('PUT', '/reorder', { ids: [2, 1] }),
+        createRequest('PUT', '/reorder', { ids: [2, 1], category_id: 1 }),
         {},
         env
       )
@@ -155,11 +155,38 @@ describe('Exercises Routes', () => {
     it('returns 400 for empty ids array', async () => {
       const env = createTestEnv()
       const res = await app.request(
-        createRequest('PUT', '/reorder', { ids: [] }),
+        createRequest('PUT', '/reorder', { ids: [], category_id: 1 }),
         {},
         env
       )
       expect(res.status).toBe(400)
+    })
+
+    it('returns 400 for missing category_id', async () => {
+      const env = createTestEnv()
+      const res = await app.request(
+        createRequest('PUT', '/reorder', { ids: [1, 2] }),
+        {},
+        env
+      )
+      expect(res.status).toBe(400)
+    })
+
+    it('returns 404 for non-existent category_id', async () => {
+      const env = createTestEnv()
+      seedCategories(env)
+      // Create an exercise first
+      await app.request(
+        createRequest('POST', '/', { name: 'Test', category_ids: [1] }),
+        {},
+        env
+      )
+      const res = await app.request(
+        createRequest('PUT', '/reorder', { ids: [1], category_id: 999 }),
+        {},
+        env
+      )
+      expect(res.status).toBe(404)
     })
   })
 

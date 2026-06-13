@@ -118,7 +118,7 @@ export default function ExerciseList() {
     if (swap < 0 || swap >= ids.length) return
     ;[ids[exIndex], ids[swap]] = [ids[swap], ids[exIndex]]
     try {
-      await api.reorderExercises(ids)
+      await api.reorderExercises(cat.id, ids)
       loadData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Sortieren')
@@ -126,12 +126,16 @@ export default function ExerciseList() {
     }
   }
 
-  // Group exercises by category for display
+  // Group exercises by category for display, sorted by per-category sort_order
   const grouped = categories.map((cat) => ({
     ...cat,
-    exercises: exercises.filter((ex) =>
-      ex.categories?.some((c) => c.id === cat.id)
-    ),
+    exercises: exercises
+      .filter((ex) => ex.categories?.some((c) => c.id === cat.id))
+      .sort((a, b) => {
+        const aCat = a.categories!.find((c) => c.id === cat.id)
+        const bCat = b.categories!.find((c) => c.id === cat.id)
+        return (aCat?.sort_order ?? 0) - (bCat?.sort_order ?? 0)
+      }),
   }))
 
   return (

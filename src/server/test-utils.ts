@@ -56,7 +56,7 @@ const tables: Record<string, Table> = {
   users: { columns: ['id', 'username', 'password_hash'], rows: new Map(), autoIncrement: 1 },
   exercise_categories: { columns: ['id', 'name', 'user_id', 'sort_order'], rows: new Map(), autoIncrement: 1 },
   exercises: { columns: ['id', 'name', 'user_id', 'deleted_at', 'sort_order'], rows: new Map(), autoIncrement: 1 },
-  exercise_category_mappings: { columns: ['exercise_id', 'category_id'], rows: new Map(), autoIncrement: 0 },
+  exercise_category_mappings: { columns: ['exercise_id', 'category_id', 'sort_order'], rows: new Map(), autoIncrement: 0 },
   trainings: { columns: ['id', 'date', 'user_id', 'category_id'], rows: new Map(), autoIncrement: 1 },
   training_exercises: { columns: ['id', 'training_id', 'exercise_id'], rows: new Map(), autoIncrement: 1 },
   sets: { columns: ['id', 'training_exercise_id', 'set_number', 'weight', 'reps'], rows: new Map(), autoIncrement: 1 },
@@ -238,12 +238,16 @@ function handleJoinSelect(sql: string, bindings: unknown[]): MockD1Result {
       }).filter(Boolean)
       const catIds = exMappings.map((m) => (m as any).category_id)
 
+      // Get sort_order from mappings
+      const catSortOrders = exMappings.map((m) => (m as any).sort_order ?? 0)
+
       return {
         id: (ex as any).id,
         name: (ex as any).name,
         deleted_at: (ex as any).deleted_at,
         category_names: catNames.join(','),
         category_ids: catIds.join(','),
+        category_sort_orders: catSortOrders.join(','),
       }
     }))
   }
