@@ -111,8 +111,9 @@ export default function ExerciseList() {
     }
   }
 
-  const moveExercise = async (_catIndex: number, exIndex: number, direction: 'up' | 'down') => {
-    const ids = exercises.map((e) => e.id)
+  const moveExercise = async (catIndex: number, exIndex: number, direction: 'up' | 'down') => {
+    const cat = grouped[catIndex]
+    const ids = cat.exercises.map((e) => e.id)
     const swap = direction === 'up' ? exIndex - 1 : exIndex + 1
     if (swap < 0 || swap >= ids.length) return
     ;[ids[exIndex], ids[swap]] = [ids[swap], ids[exIndex]]
