@@ -113,12 +113,19 @@ export default function ExerciseList() {
 
   const moveExercise = async (catIndex: number, exIndex: number, direction: 'up' | 'down') => {
     const cat = grouped[catIndex]
-    const ids = cat.exercises.map((e) => e.id)
+    const catIds = cat.exercises.map((e) => e.id)
     const swap = direction === 'up' ? exIndex - 1 : exIndex + 1
-    if (swap < 0 || swap >= ids.length) return
-    ;[ids[exIndex], ids[swap]] = [ids[swap], ids[exIndex]]
+    if (swap < 0 || swap >= catIds.length) return
+
+    // Find global positions of the two exercises being swapped
+    const globalIds = exercises.map((e) => e.id)
+    const idxA = globalIds.indexOf(catIds[exIndex])
+    const idxB = globalIds.indexOf(catIds[swap])
+    if (idxA === -1 || idxB === -1) return
+    ;[globalIds[idxA], globalIds[idxB]] = [globalIds[idxB], globalIds[idxA]]
+
     try {
-      await api.reorderExercises(ids)
+      await api.reorderExercises(globalIds)
       loadData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Sortieren')
