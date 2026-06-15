@@ -24,9 +24,9 @@ app.get('/', async (c) => {
   const userId = c.get('userId')
   const { results } = await db.prepare(`
     SELECT e.id, e.name, e.deleted_at,
-      json_group_array(c.name) FILTER (WHERE c.id IS NOT NULL) as category_names,
-      json_group_array(c.id) FILTER (WHERE c.id IS NOT NULL) as category_ids,
-      json_group_array(m.sort_order) FILTER (WHERE c.id IS NOT NULL) as category_sort_orders
+      json_group_array(CASE WHEN c.id IS NOT NULL THEN c.name END) as category_names,
+      json_group_array(CASE WHEN c.id IS NOT NULL THEN c.id END) as category_ids,
+      json_group_array(CASE WHEN c.id IS NOT NULL THEN m.sort_order END) as category_sort_orders
     FROM exercises e
     LEFT JOIN exercise_category_mappings m ON e.id = m.exercise_id
     LEFT JOIN exercise_categories c ON m.category_id = c.id
@@ -36,9 +36,21 @@ app.get('/', async (c) => {
   `).bind(userId).all()
 
   const exercises: ExerciseWithCategories[] = (results as unknown as ExerciseRow[]).map((r) => {
-    const catIds = JSON.parse(r.category_ids || '[]') as number[]
-    const catNames = JSON.parse(r.category_names || '[]') as string[]
-    const catSortOrders = JSON.parse(r.category_sort_orders || '[]') as number[]
+    const rawIds = JSON.parse(r.category_ids || '[]') as (number | null)[]
+    const rawNames = JSON.parse(r.category_names || '[]') as (string | null)[]
+    const rawSortOrders = JSON.parse(r.category_sort_orders || '[]') as (number | null)[]
+    // Filter out null entries from LEFT JOIN misses (exercises with no categories)
+    // All three arrays are aligned — same length, same null positions
+    const catIds: number[] = []
+    const catNames: string[] = []
+    const catSortOrders: number[] = []
+    for (let i = 0; i < rawIds.length; i++) {
+      if (rawIds[i] !== null && rawNames[i] !== null) {
+        catIds.push(rawIds[i]!)
+        catNames.push(rawNames[i]!)
+        catSortOrders.push(rawSortOrders[i] ?? 0)
+      }
+    }
     return {
       id: r.id,
       name: r.name,
