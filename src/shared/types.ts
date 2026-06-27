@@ -173,6 +173,8 @@ export interface LastCategorySet {
   set_number: number
   weight: number | null
   reps: number | null
+  previous_weight: number | null
+  previous_reps: number | null
 }
 
 export interface LastCategoryExerciseGroup {

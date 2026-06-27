@@ -59,7 +59,7 @@ const tables: Record<string, Table> = {
   exercise_category_mappings: { columns: ['exercise_id', 'category_id', 'sort_order'], rows: new Map(), autoIncrement: 0 },
   trainings: { columns: ['id', 'date', 'user_id', 'category_id'], rows: new Map(), autoIncrement: 1 },
   training_exercises: { columns: ['id', 'training_id', 'exercise_id'], rows: new Map(), autoIncrement: 1 },
-  sets: { columns: ['id', 'training_exercise_id', 'set_number', 'weight', 'reps'], rows: new Map(), autoIncrement: 1 },
+  sets: { columns: ['id', 'training_exercise_id', 'set_number', 'weight', 'reps', 'previous_weight', 'previous_reps'], rows: new Map(), autoIncrement: 1 },
 }
 
 // Seed default data

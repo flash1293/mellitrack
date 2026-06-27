@@ -31,6 +31,8 @@ interface LastCategoryRow {
   set_number: number | null
   weight: number | null
   reps: number | null
+  previous_weight: number | null
+  previous_reps: number | null
   te_order_id: number | null
 }
 
@@ -193,6 +195,30 @@ app.get('/last-category/:categoryId', async (c) => {
       s.set_number
   `).bind(categoryId, userId, categoryId, userId, categoryId, userId).all<LastCategoryRow>()
 
+  // Find the previous training's sets to populate previous_weight/previous_reps
+  // (so the CREATE form can show real deltas instead of all-yellow)
+  const previousTraining = await db.prepare(`
+    SELECT id FROM trainings
+    WHERE category_id = ? AND user_id = ?
+    ORDER BY date DESC, id DESC
+    LIMIT 1 OFFSET 1
+  `).bind(categoryId, userId).first<{ id: number }>()
+
+  const prevSetsByExerciseId: Record<number, { set_number: number; weight: number | null; reps: number | null }[]> = {}
+  if (previousTraining) {
+    const { results: prevSets } = await db.prepare(`
+      SELECT s.set_number, s.weight, s.reps, te.exercise_id
+      FROM sets s
+      JOIN training_exercises te ON s.training_exercise_id = te.id
+      WHERE te.training_id = ?
+      ORDER BY te.exercise_id, s.set_number
+    `).bind(previousTraining.id).all<{ set_number: number; weight: number | null; reps: number | null; exercise_id: number }>()
+    for (const ps of prevSets || []) {
+      if (!prevSetsByExerciseId[ps.exercise_id]) prevSetsByExerciseId[ps.exercise_id] = []
+      prevSetsByExerciseId[ps.exercise_id].push({ set_number: ps.set_number, weight: ps.weight, reps: ps.reps })
+    }
+  }
+
   const grouped: Record<number, LastCategoryExerciseGroup> = {}
   for (const row of results) {
     if (!grouped[row.exercise_id]) {
@@ -203,10 +229,14 @@ app.get('/last-category/:categoryId', async (c) => {
       }
     }
     if (row.set_number !== null) {
+      // Find matching set from previous training (same exercise_id + set_number)
+      const prev = prevSetsByExerciseId[row.exercise_id]?.find((ps) => ps.set_number === row.set_number)
       const set: LastCategorySet = {
         set_number: row.set_number,
         weight: row.weight,
         reps: row.reps,
+        previous_weight: prev?.weight ?? null,
+        previous_reps: prev?.reps ?? null,
       }
       grouped[row.exercise_id].sets.push(set)
     }
