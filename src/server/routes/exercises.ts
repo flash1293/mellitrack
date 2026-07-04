@@ -28,7 +28,7 @@ app.get('/', async (c) => {
     FROM exercises e
     LEFT JOIN exercise_category_mappings m ON e.id = m.exercise_id
     LEFT JOIN exercise_categories c ON m.category_id = c.id
-    WHERE e.user_id = ?
+    WHERE e.user_id = ? AND e.deleted_at IS NULL
     GROUP BY e.id, e.name, e.deleted_at
     ORDER BY e.sort_order, e.name
   `).bind(userId).all()
