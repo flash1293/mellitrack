@@ -202,8 +202,10 @@ export default function TrainingForm() {
             reps: s.reps?.toString() ?? '',
             prefilled_weight: s.weight?.toString() ?? '',
             prefilled_reps: s.reps?.toString() ?? '',
-            previous_weight: s.previous_weight?.toString() ?? '',
-            previous_reps: s.previous_reps?.toString() ?? '',
+            // Use last training's values as comparison baseline so the new
+            // training starts neutral — no carried-over colors from old deltas.
+            previous_weight: s.weight?.toString() ?? '',
+            previous_reps: s.reps?.toString() ?? '',
             touchedWeight: false,
             touchedReps: false,
           })),
