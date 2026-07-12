@@ -10,6 +10,7 @@ import ErrorBanner from '../components/ui/ErrorBanner'
 import SaveCancelButtons from '../components/TrainingForm/SaveCancelButtons'
 import type {
   ExerciseCategory,
+  ExerciseWithCategories,
   LastCategoryExerciseGroup,
   FormExerciseEntry,
   TrainingDetail,
@@ -28,6 +29,11 @@ export default function TrainingForm() {
   const [loading, setLoading] = useState(isEdit)
   const [showDraftRestored, setShowDraftRestored] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [allExercises, setAllExercises] = useState<ExerciseWithCategories[]>([])
+  const [crossSearchQuery, setCrossSearchQuery] = useState('')
+  const [crossDropdownOpen, setCrossDropdownOpen] = useState(false)
+  const [addingCrossId, setAddingCrossId] = useState<number | null>(null)
+  const crossSearchRef = useRef<HTMLDivElement>(null)
   const loadingCategoryRef = useRef<number | null>(null)
   const userSelectedRef = useRef(false)
   const hasDataRef = useRef(false)
@@ -63,6 +69,22 @@ export default function TrainingForm() {
       setError(err instanceof Error ? err.message : 'Fehler beim Laden der Kategorien')
     })
   }, [isEdit, selectedCategory])
+
+  // --- Load all exercises (for cross-category search) ---
+  useEffect(() => {
+    api.getExercises().then(setAllExercises).catch(() => {})
+  }, [])
+
+  // --- Close cross-category dropdown on outside click ---
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (crossSearchRef.current && !crossSearchRef.current.contains(e.target as Node)) {
+        setCrossDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   // --- Load existing training for editing ---
   useEffect(() => {
@@ -309,6 +331,78 @@ export default function TrainingForm() {
     )
   }
 
+  // --- Cross-category exercise search ---
+  const crossSearchResults = crossSearchQuery.trim()
+    ? allExercises.filter(ex => {
+        const alreadyInEntries = entries.some(e => e.exercise_id === ex.id)
+        if (alreadyInEntries) return false
+        return ex.name.toLowerCase().includes(crossSearchQuery.toLowerCase())
+      })
+    : []
+
+  const createEmptyEntry = (exercise: ExerciseWithCategories): FormExerciseEntry => ({
+    exercise_id: exercise.id,
+    exercise_name: exercise.name,
+    sets: [{
+      set_number: 1,
+      weight: '',
+      reps: '',
+      prefilled_weight: '',
+      prefilled_reps: '',
+      previous_weight: '',
+      previous_reps: '',
+      touchedWeight: false,
+      touchedReps: false,
+    }],
+  })
+
+  const addCrossExercise = async (exercise: ExerciseWithCategories) => {
+    setAddingCrossId(exercise.id)
+    setCrossSearchQuery('')
+    setCrossDropdownOpen(false)
+
+    try {
+      const progress = await api.getProgress(exercise.id)
+      let newEntry: FormExerciseEntry
+
+      if (progress.length > 0) {
+        const lastTraining = progress[progress.length - 1]
+        let sets: { set_number: number; weight: number; reps: number }[] = []
+        try {
+          sets = JSON.parse(lastTraining.sets)
+        } catch { /* ignore parse errors */ }
+
+        if (sets.length > 0) {
+          newEntry = {
+            exercise_id: exercise.id,
+            exercise_name: exercise.name,
+            sets: sets.map((s, i) => ({
+              set_number: i + 1,
+              weight: s.weight?.toString() ?? '',
+              reps: s.reps?.toString() ?? '',
+              prefilled_weight: s.weight?.toString() ?? '',
+              prefilled_reps: s.reps?.toString() ?? '',
+              previous_weight: '',
+              previous_reps: '',
+              touchedWeight: false,
+              touchedReps: false,
+            })),
+          }
+        } else {
+          newEntry = createEmptyEntry(exercise)
+        }
+      } else {
+        newEntry = createEmptyEntry(exercise)
+      }
+
+      setEntries(prev => [...prev, newEntry])
+    } catch {
+      setEntries(prev => [...prev, createEmptyEntry(exercise)])
+    } finally {
+      setAddingCrossId(null)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!date) return
     const validEntries = entries
@@ -392,6 +486,52 @@ export default function TrainingForm() {
             onRemoveExercise={removeExercise}
           />
         ))
+      )}
+
+      {/* Cross-category exercise search */}
+      {!isEdit && selectedCategory && (
+        <div ref={crossSearchRef} className="relative">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Übung aus anderer Kategorie suchen & hinzufügen..."
+              value={crossSearchQuery}
+              onChange={(e) => {
+                setCrossSearchQuery(e.target.value)
+                setCrossDropdownOpen(true)
+              }}
+              onFocus={() => setCrossDropdownOpen(true)}
+            />
+            {addingCrossId && (
+              <span className="text-sm text-gray-500">Lädt...</span>
+            )}
+          </div>
+
+          {crossDropdownOpen && crossSearchResults.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {crossSearchResults.map(ex => (
+                <button
+                  key={ex.id}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between"
+                  onClick={() => addCrossExercise(ex)}
+                  disabled={addingCrossId !== null}
+                >
+                  <span>{ex.name}</span>
+                  <span className="text-xs text-gray-400 ml-2 shrink-0">
+                    {ex.categories.map(c => c.name).join(', ')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {crossDropdownOpen && crossSearchQuery.trim() && crossSearchResults.length === 0 && !addingCrossId && (
+            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-500">
+              Keine Übungen gefunden
+            </div>
+          )}
+        </div>
       )}
 
       <SaveCancelButtons
