@@ -1,20 +1,61 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
-import { loadDraft, saveDraft, clearDraft } from '../components/TrainingForm/draft'
-import DraftRestoreBanner from '../components/TrainingForm/DraftRestoreBanner'
-import DateCategoryPicker from '../components/TrainingForm/DateCategoryPicker'
-import ExerciseCard from '../components/TrainingForm/ExerciseCard'
-import EmptyState from '../components/ui/EmptyState'
-import ErrorBanner from '../components/ui/ErrorBanner'
-import SaveCancelButtons from '../components/TrainingForm/SaveCancelButtons'
-import type {
-  ExerciseCategory,
-  ExerciseWithCategories,
-  LastCategoryExerciseGroup,
-  FormExerciseEntry,
-  TrainingDetail,
-} from '../../shared/types'
+
+interface Set {
+  set_number: number
+  weight: string
+  reps: string
+  prefilled_weight: string
+  prefilled_reps: string
+  previous_weight: string
+  previous_reps: string
+  touchedWeight: boolean
+  touchedReps: boolean
+}
+
+interface ExerciseEntry {
+  exercise_id: number
+  exercise_name: string
+  sets: Set[]
+}
+
+interface DraftData {
+  date: string
+  selectedCategory: string
+  entries: ExerciseEntry[]
+  isEdit: boolean
+  trainingId?: string
+}
+
+const DRAFT_KEY = 'mellitrack_training_draft'
+
+function saveDraft(date: string, selectedCategory: string, entries: ExerciseEntry[], isEdit: boolean, trainingId?: string) {
+  try {
+    const data: DraftData = { date, selectedCategory, entries, isEdit, trainingId }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
+  } catch {
+    // localStorage might be full — silently ignore
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // silently ignore
+  }
+}
+
+function loadDraft(): DraftData | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
 
 export default function TrainingForm() {
   const navigate = useNavigate()
@@ -22,29 +63,25 @@ export default function TrainingForm() {
   const isEdit = !!id
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [categories, setCategories] = useState<ExerciseCategory[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [entries, setEntries] = useState<FormExerciseEntry[]>([])
+  const [entries, setEntries] = useState<ExerciseEntry[]>([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [showDraftRestored, setShowDraftRestored] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [allExercises, setAllExercises] = useState<ExerciseWithCategories[]>([])
-  const [crossSearchQuery, setCrossSearchQuery] = useState('')
-  const [crossDropdownOpen, setCrossDropdownOpen] = useState(false)
-  const [addingCrossId, setAddingCrossId] = useState<number | null>(null)
-  const crossSearchRef = useRef<HTMLDivElement>(null)
   const loadingCategoryRef = useRef<number | null>(null)
   const userSelectedRef = useRef(false)
   const hasDataRef = useRef(false)
   const restoredFromDraftRef = useRef(false)
   const selectedCategoryRef = useRef(selectedCategory)
+  const [draftDiscarded, setDraftDiscarded] = useState(false)
 
   // --- On mount: restore draft immediately (before any API calls can interfere) ---
   useEffect(() => {
     if (isEdit) return
     const draft = loadDraft()
     if (draft && !draft.isEdit && !draft.trainingId) {
+      // Draft gefunden → sofort wiederherstellen, bevor API-Calls starten
       restoredFromDraftRef.current = true
       setDate(draft.date)
       setSelectedCategory(draft.selectedCategory)
@@ -60,54 +97,39 @@ export default function TrainingForm() {
 
   // --- Load categories ---
   useEffect(() => {
-    api.getCategories().then((cats) => {
+    api.getCategories().then((cats: any[]) => {
       setCategories(cats)
+      // Nur Kategorie setzen wenn noch keine ausgewählt ist (durch Draft oder User)
+      // Wichtig: selectedCategoryRef.current verwenden (nicht selectedCategory aus dem Closure),
+      // da der Callback async läuft und selectedCategory sich inzwischen geändert haben kann
       if (cats.length > 0 && !isEdit && !userSelectedRef.current && !selectedCategoryRef.current) {
         setSelectedCategory(String(cats[0].id))
       }
-    }).catch((err) => {
-      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Kategorien')
     })
   }, [isEdit, selectedCategory])
-
-  // --- Load all exercises (for cross-category search) ---
-  useEffect(() => {
-    api.getExercises().then(setAllExercises).catch(() => {})
-  }, [])
-
-  // --- Close cross-category dropdown on outside click ---
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (crossSearchRef.current && !crossSearchRef.current.contains(e.target as Node)) {
-        setCrossDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
 
   // --- Load existing training for editing ---
   useEffect(() => {
     if (!isEdit || !id) return
-    api.getTraining(Number(id)).then((t: TrainingDetail) => {
+    api.getTraining(Number(id)).then((t: any) => {
       setDate(t.date)
+      // Infer category from first exercise's categories
       const firstEx = t.exercises[0]
       if (firstEx) {
-        api.getExercises().then((allExs) => {
+        api.getExercises().then((allExs: any[]) => {
           const exData = allExs.find((e) => e.id === firstEx.exercise_id)
           if (exData && exData.categories && exData.categories.length > 0) {
             setSelectedCategory(String(exData.categories[0].id))
           }
-        }).catch((err) => {
-          setError(err instanceof Error ? err.message : 'Fehler beim Laden der Übungen')
         })
       }
       setEntries(
-        t.exercises.map((ex) => ({
+        t.exercises.map((ex: any) => ({
           exercise_id: ex.exercise_id,
           exercise_name: ex.exercise_name,
-          sets: ex.sets.map((s) => {
-            const prevSet = (ex.previous_sets || []).find((ps) => ps.set_number === s.set_number)
+          sets: ex.sets.map((s: any) => {
+            // Find matching set from previous training for comparison
+            const prevSet = (ex.previous_sets || []).find((ps: any) => ps.set_number === s.set_number)
             return {
               set_number: s.set_number,
               weight: s.weight?.toString() ?? '',
@@ -123,9 +145,6 @@ export default function TrainingForm() {
         }))
       )
       setLoading(false)
-    }).catch((err) => {
-      setError(err instanceof Error ? err.message : 'Fehler beim Laden des Trainings')
-      setLoading(false)
     })
   }, [id, isEdit])
 
@@ -133,7 +152,9 @@ export default function TrainingForm() {
   const discardDraft = useCallback(() => {
     clearDraft()
     setShowDraftRestored(false)
+    setDraftDiscarded(true)
     restoredFromDraftRef.current = false
+    // Kategorie zurücksetzen, damit die normale Ladereihenfolge greift
     setSelectedCategory('')
   }, [])
 
@@ -144,6 +165,7 @@ export default function TrainingForm() {
         saveDraft(date, selectedCategory, entries, isEdit, id)
       }
     }
+    // Use capture phase to get the event before other handlers
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [date, selectedCategory, entries, isEdit, id])
@@ -159,23 +181,22 @@ export default function TrainingForm() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [date, selectedCategory, entries, isEdit, id])
 
-  // --- Save draft: debounced save on data change (avoid writing on every keystroke) ---
+  // --- Save draft: immediate save on every data change (no debounce) ---
   useEffect(() => {
+    // Don't start saving data until user has actually entered something
     if (!hasDataRef.current && entries.some(e => e.sets.some(s => s.weight || s.reps))) {
       hasDataRef.current = true
     }
     if (!hasDataRef.current) return
 
-    const timer = setTimeout(() => {
-      saveDraft(date, selectedCategory, entries, isEdit, id)
-    }, 500)
-
-    return () => clearTimeout(timer)
+    // Save immediately (not debounced) for maximum reliability
+    saveDraft(date, selectedCategory, entries, isEdit, id)
   }, [date, selectedCategory, entries, isEdit, id])
 
   // --- Load exercises when category changes ---
   useEffect(() => {
     if (!selectedCategory || isEdit) return
+    // Wenn ein Draft wiederhergestellt wurde, nicht die Übungen laden
     if (restoredFromDraftRef.current) {
       return
     }
@@ -184,31 +205,30 @@ export default function TrainingForm() {
 
   const loadExercisesForCategory = async (categoryId: number) => {
     loadingCategoryRef.current = categoryId
-    let exercises, lastTraining
-    try {
-      exercises = await api.getExercisesByCategory(categoryId)
-      lastTraining = await api.getLastCategoryTraining(categoryId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Übungen')
-      return
-    }
+    const exercises = await api.getExercisesByCategory(categoryId)
+    const lastTraining = await api.getLastCategoryTraining(categoryId)
 
+    // If category changed while we were loading, discard this result
     if (loadingCategoryRef.current !== categoryId) return
+
+    // If a draft was restored while we were loading, discard to avoid overwriting
     if (restoredFromDraftRef.current) {
       restoredFromDraftRef.current = false
       return
     }
 
-    const newEntries: FormExerciseEntry[] = []
+    const newEntries: ExerciseEntry[] = []
     const processedIds = new Set<number>()
 
-    const lastTrainingByExercise: Record<number, LastCategoryExerciseGroup> = {}
+    // Build a lookup for pre-filled sets from the last training
+    const lastTrainingByExercise: Record<number, any> = {}
     if (lastTraining) {
       for (const ex of lastTraining) {
         lastTrainingByExercise[ex.exercise_id] = ex
       }
     }
 
+    // Add exercises in sort_order (from exercises API) and pre-fill from last training
     for (const ex of exercises) {
       if (processedIds.has(ex.id)) continue
       processedIds.add(ex.id)
@@ -218,14 +238,12 @@ export default function TrainingForm() {
         newEntries.push({
           exercise_id: lastEx.exercise_id,
           exercise_name: lastEx.exercise_name,
-          sets: lastEx.sets.map((s, i) => ({
+          sets: lastEx.sets.map((s: any, i: number) => ({
             set_number: i + 1,
             weight: s.weight?.toString() ?? '',
             reps: s.reps?.toString() ?? '',
             prefilled_weight: s.weight?.toString() ?? '',
             prefilled_reps: s.reps?.toString() ?? '',
-            // Use last training's values as comparison baseline so the new
-            // training starts neutral — no carried-over colors from old deltas.
             previous_weight: s.weight?.toString() ?? '',
             previous_reps: s.reps?.toString() ?? '',
             touchedWeight: false,
@@ -252,6 +270,14 @@ export default function TrainingForm() {
     }
 
     setEntries(newEntries)
+  }
+
+  const isChanged = (set: Set, field: 'weight' | 'reps') => {
+    return set[field] !== (field === 'weight' ? set.prefilled_weight : set.prefilled_reps)
+  }
+
+  const isTouched = (set: Set, field: 'weight' | 'reps') => {
+    return field === 'weight' ? set.touchedWeight : set.touchedReps
   }
 
   const markTouched = (entryIndex: number, setIndex: number, field: 'weight' | 'reps') => {
@@ -331,76 +357,44 @@ export default function TrainingForm() {
     )
   }
 
-  // --- Cross-category exercise search ---
-  const crossSearchResults = crossSearchQuery.trim()
-    ? allExercises.filter(ex => {
-        const alreadyInEntries = entries.some(e => e.exercise_id === ex.id)
-        if (alreadyInEntries) return false
-        return ex.name.toLowerCase().includes(crossSearchQuery.toLowerCase())
-      })
-    : []
+  const getComparisonColor = (currentValue: string, previousValue: string): string => {
+    if (!previousValue || !currentValue) return ''
+    const current = parseFloat(currentValue)
+    const previous = parseFloat(previousValue)
+    if (isNaN(current) || isNaN(previous)) return ''
+    if (current > previous) return 'bg-green-100'
+    if (current < previous) return 'bg-red-100'
+    return 'bg-yellow-100'
+  }
 
-  const createEmptyEntry = (exercise: ExerciseWithCategories): FormExerciseEntry => ({
-    exercise_id: exercise.id,
-    exercise_name: exercise.name,
-    sets: [{
-      set_number: 1,
-      weight: '',
-      reps: '',
-      prefilled_weight: '',
-      prefilled_reps: '',
-      previous_weight: '',
-      previous_reps: '',
-      touchedWeight: false,
-      touchedReps: false,
-    }],
-  })
+  /** Returns true if any set's weight changed vs previous — in that case, reps become the new baseline */
+  const hasWeightChanged = (sets: Set[]): boolean => {
+    return sets.some((s) => s.previous_weight && s.weight !== s.previous_weight)
+  }
 
-  const addCrossExercise = async (exercise: ExerciseWithCategories) => {
-    setAddingCrossId(exercise.id)
-    setCrossSearchQuery('')
-    setCrossDropdownOpen(false)
+  /** Reps color: neutral (white) if weight changed, otherwise normal comparison */
+  const getRepsComparisonColor = (set: Set): string => {
+    // If weight changed, reps are the new baseline — no color
+    if (set.previous_weight && set.weight !== set.previous_weight) return ''
+    return getComparisonColor(set.reps, set.previous_reps)
+  }
 
-    try {
-      const progress = await api.getProgress(exercise.id)
-      let newEntry: FormExerciseEntry
+  const getTotalReps = (sets: Set[], field: 'reps' | 'previous_reps'): number => {
+    return sets.reduce((sum, set) => {
+      const val = parseFloat(set[field])
+      return sum + (isNaN(val) ? 0 : val)
+    }, 0)
+  }
 
-      if (progress.length > 0) {
-        const lastTraining = progress[progress.length - 1]
-        let sets: { set_number: number; weight: number; reps: number }[] = []
-        try {
-          sets = JSON.parse(lastTraining.sets)
-        } catch { /* ignore parse errors */ }
-
-        if (sets.length > 0) {
-          newEntry = {
-            exercise_id: exercise.id,
-            exercise_name: exercise.name,
-            sets: sets.map((s, i) => ({
-              set_number: i + 1,
-              weight: s.weight?.toString() ?? '',
-              reps: s.reps?.toString() ?? '',
-              prefilled_weight: s.weight?.toString() ?? '',
-              prefilled_reps: s.reps?.toString() ?? '',
-              previous_weight: '',
-              previous_reps: '',
-              touchedWeight: false,
-              touchedReps: false,
-            })),
-          }
-        } else {
-          newEntry = createEmptyEntry(exercise)
-        }
-      } else {
-        newEntry = createEmptyEntry(exercise)
-      }
-
-      setEntries(prev => [...prev, newEntry])
-    } catch {
-      setEntries(prev => [...prev, createEmptyEntry(exercise)])
-    } finally {
-      setAddingCrossId(null)
-    }
+  const getTotalComparisonColor = (sets: Set[]): string => {
+    // If any weight changed, total reps are the new baseline — no color
+    if (hasWeightChanged(sets)) return ''
+    const currentTotal = getTotalReps(sets, 'reps')
+    const previousTotal = getTotalReps(sets, 'previous_reps')
+    if (currentTotal === 0 && previousTotal === 0) return ''
+    if (currentTotal > previousTotal) return 'bg-green-100'
+    if (currentTotal < previousTotal) return 'bg-red-100'
+    return 'bg-yellow-100'
   }
 
   const handleSubmit = async () => {
@@ -419,7 +413,7 @@ export default function TrainingForm() {
       .filter((e) => e.sets.length > 0)
 
     if (validEntries.length === 0) {
-      setError('Mindestens eine Übung mit Sätzen eingeben')
+      alert('Mindestens eine Übung mit Sätzen eingeben')
       return
     }
 
@@ -432,9 +426,8 @@ export default function TrainingForm() {
       }
       clearDraft()
       navigate('/trainings')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      setError(message)
+    } catch (err: any) {
+      alert(err.message)
     } finally {
       setSaving(false)
     }
@@ -442,104 +435,179 @@ export default function TrainingForm() {
 
   if (loading) return <div className="p-4 text-center">Laden...</div>
 
-  const showEmpty = (!isEdit && entries.length === 0 && !showDraftRestored)
-    || entries.length === 0
-
   return (
     <div className="space-y-4 max-w-2xl w-full overflow-hidden">
       <h2 className="text-xl font-bold">{isEdit ? 'Training bearbeiten' : 'Neues Training'}</h2>
 
       {showDraftRestored && (
-        <DraftRestoreBanner date={date} onDiscard={discardDraft} />
-      )}
-
-      <ErrorBanner message={error} />
-
-      <DateCategoryPicker
-        date={date}
-        onDateChange={setDate}
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onCategoryChange={(catId) => {
-          userSelectedRef.current = true
-          if (restoredFromDraftRef.current) {
-            restoredFromDraftRef.current = false
-          }
-          setSelectedCategory(catId)
-        }}
-        disabled={isEdit}
-      />
-
-      {showEmpty ? (
-        <EmptyState message="Keine Übungen in dieser Kategorie" />
-      ) : (
-        entries.map((entry, ei) => (
-          <ExerciseCard
-            key={ei}
-            entry={entry}
-            entryIndex={ei}
-            isEdit={isEdit}
-            onUpdateSet={updateSet}
-            onBlurSet={markTouched}
-            onRemoveSet={removeSet}
-            onAddSet={addSet}
-            onRemoveExercise={removeExercise}
-          />
-        ))
-      )}
-
-      {/* Cross-category exercise search */}
-      {!isEdit && selectedCategory && (
-        <div ref={crossSearchRef} className="relative">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Übung aus anderer Kategorie suchen & hinzufügen..."
-              value={crossSearchQuery}
-              onChange={(e) => {
-                setCrossSearchQuery(e.target.value)
-                setCrossDropdownOpen(true)
-              }}
-              onFocus={() => setCrossDropdownOpen(true)}
-            />
-            {addingCrossId && (
-              <span className="text-sm text-gray-500">Lädt...</span>
-            )}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <p className="text-sm text-amber-800">
+            ✨ Entwurf vom {new Date(date).toLocaleDateString('de-DE')} wurde wiederhergestellt.
+            Deine Eingaben sind sicher und werden fortlaufend gespeichert.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={discardDraft}
+              className="px-4 py-2 border border-amber-300 text-amber-700 text-sm rounded-lg hover:bg-amber-100 transition-colors"
+            >
+              Entwurf verwerfen
+            </button>
           </div>
-
-          {crossDropdownOpen && crossSearchResults.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-              {crossSearchResults.map(ex => (
-                <button
-                  key={ex.id}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center justify-between"
-                  onClick={() => addCrossExercise(ex)}
-                  disabled={addingCrossId !== null}
-                >
-                  <span>{ex.name}</span>
-                  <span className="text-xs text-gray-400 ml-2 shrink-0">
-                    {ex.categories.map(c => c.name).join(', ')}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {crossDropdownOpen && crossSearchQuery.trim() && crossSearchResults.length === 0 && !addingCrossId && (
-            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-500">
-              Keine Übungen gefunden
-            </div>
-          )}
         </div>
       )}
 
-      <SaveCancelButtons
-        onCancel={() => navigate('/trainings')}
-        onSubmit={handleSubmit}
-        saving={saving}
-        disabled={entries.length === 0}
-      />
+      <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Datum</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => {
+              userSelectedRef.current = true
+              // Wenn ein Draft wiederhergestellt wurde und der User die Kategorie wechselt,
+              // soll der Draft nicht blockieren — neue Übungen für die gewählte Kategorie laden
+              if (restoredFromDraftRef.current) {
+                restoredFromDraftRef.current = false
+              }
+              setSelectedCategory(e.target.value)
+            }}
+            disabled={isEdit}
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100 disabled:text-gray-500"
+          >
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {!draftDiscarded && entries.length === 0 && !isEdit && !showDraftRestored ? (
+        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
+          <p className="text-gray-500">Keine Übungen in dieser Kategorie</p>
+        </div>
+      ) : entries.length === 0 ? (
+        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
+          <p className="text-gray-500">Keine Übungen in dieser Kategorie</p>
+        </div>
+      ) : (
+        entries.map((entry, ei) => (
+          <div key={ei} className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{entry.exercise_name}</span>
+              {!isEdit && (
+                <button
+                  onClick={() => removeExercise(ei)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {entry.sets.map((set, si) => (
+                <div key={si} className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] gap-1 items-center">
+                  <span className="text-sm text-gray-500 shrink-0">S{set.set_number}</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="kg"
+                    value={set.weight}
+                    onChange={(e) => updateSet(ei, si, 'weight', e.target.value)}
+                    onBlur={() => markTouched(ei, si, 'weight')}
+                    style={{ minWidth: 0, width: '100%' }}
+                    className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
+                      getComparisonColor(set.weight, set.previous_weight)
+                    } ${
+                      isChanged(set, 'weight') || isTouched(set, 'weight')
+                        ? 'border-l-4 border-l-blue-500 border-gray-300'
+                        : 'border-gray-300'
+                    }`}
+                  />
+                  <span className="text-lg shrink-0">⚖️</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Wdh"
+                    value={set.reps}
+                    onChange={(e) => updateSet(ei, si, 'reps', e.target.value)}
+                    onBlur={() => markTouched(ei, si, 'reps')}
+                    style={{ minWidth: 0, width: '100%' }}
+                    className={`px-2 py-2 rounded-lg border outline-none transition-colors ${
+                      getRepsComparisonColor(set)
+                    } ${
+                      isChanged(set, 'reps') || isTouched(set, 'reps')
+                        ? 'border-l-4 border-l-blue-500 border-gray-300'
+                        : 'border-gray-300'
+                    }`}
+                  />
+                  <span className="text-lg shrink-0">🔁</span>
+                  <button
+                    onClick={() => removeSet(ei, si)}
+                    className="p-2 text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Total reps row */}
+            {entry.sets.length > 0 && (
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                <span className="text-sm font-medium text-gray-500 shrink-0">∑</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium text-sm ${
+                  getTotalComparisonColor(entry.sets)
+                }`}>
+                  {getTotalReps(entry.sets, 'reps')} Wiederholungen
+                </span>
+                <span className="text-xs text-gray-400">
+                  {getTotalReps(entry.sets, 'previous_reps') > 0
+                    ? `(vorher: ${getTotalReps(entry.sets, 'previous_reps')})`
+                    : ''}
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={() => addSet(ei)}
+              className="w-full py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              + Satz hinzufügen
+            </button>
+          </div>
+        ))
+      )}
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => navigate('/trainings')}
+          className="flex-1 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+        >
+          Abbrechen
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={saving || entries.length === 0}
+          className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition-colors"
+        >
+          {saving ? 'Speichern...' : 'Speichern'}
+        </button>
+      </div>
     </div>
   )
 }
