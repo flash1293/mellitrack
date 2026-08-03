@@ -105,6 +105,10 @@ function OriginalSection({ category }: { category: DashboardCategoryData }) {
 // ──────────────────────────────────────────────
 
 function DualAxisSection({ category }: { category: DashboardCategoryData }) {
+  const [highlighted, setHighlighted] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [showDropdown, setShowDropdown] = useState(false)
+
   const data = category.dates.map((date) => {
     const point: Record<string, string | number | null> = { date }
     category.exercises.forEach((ex) => {
@@ -116,10 +120,73 @@ function DualAxisSection({ category }: { category: DashboardCategoryData }) {
   })
 
   const hasData = category.dates.length >= 2
+  const filtered = search
+    ? category.exercises.filter((ex) => ex.name.toLowerCase().includes(search.toLowerCase()))
+    : category.exercises
+
+  const handleLegendClick = (e: any) => {
+    const name = e?.value ?? e
+    if (typeof name === 'string') {
+      setHighlighted(highlighted === name ? null : name)
+    }
+  }
+
+  const lineProps = (exName: string) => {
+    if (!highlighted) return { strokeWidth: 2.5, opacity: 1 }
+    return exName === highlighted
+      ? { strokeWidth: 3.5, opacity: 1 }
+      : { strokeWidth: 1.5, opacity: 0.15 }
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-5">
-      <h3 className="font-semibold text-lg mb-4">{category.name}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-lg">{category.name}</h3>
+        {hasData && category.exercises.length > 1 && (
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Übung hervorheben…"
+              value={highlighted ?? search}
+              onChange={(e) => {
+                const v = e.target.value
+                setSearch(v)
+                setHighlighted(null)
+                setShowDropdown(true)
+              }}
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+              className="text-xs border border-gray-300 rounded-md px-2.5 py-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            />
+            {highlighted && (
+              <button
+                onClick={() => { setHighlighted(null); setSearch('') }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+              >
+                ✕
+              </button>
+            )}
+            {showDropdown && search && filtered.length > 0 && (
+              <div className="absolute z-10 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                {filtered.map((ex) => (
+                  <button
+                    key={ex.id}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setHighlighted(ex.name)
+                      setSearch('')
+                      setShowDropdown(false)
+                    }}
+                    className="block w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition-colors"
+                  >
+                    {ex.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       {!hasData ? (
         <p className="text-gray-500 text-sm">Mindestens 2 Trainingstage erforderlich</p>
       ) : (
@@ -134,14 +201,24 @@ function DualAxisSection({ category }: { category: DashboardCategoryData }) {
                   <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
                   <Tooltip labelFormatter={formatDateLong} formatter={(v: number, name: string) => [`${v} kg`, name]} />
                   <Legend
-                    formatter={(value: string) => <span className="text-xs">{value}</span>}
+                    onClick={handleLegendClick}
+                    formatter={(value: string) => (
+                      <span className={`text-xs cursor-pointer ${highlighted && value !== highlighted ? 'text-gray-300' : ''}`}>
+                        {value}
+                      </span>
+                    )}
                     wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
                   />
-                  {category.exercises.map((ex, i) => (
-                    <Line key={ex.id} type="monotone" dataKey={`w_${ex.id}`} name={ex.name}
-                      stroke={COLORS[i % COLORS.length]} strokeWidth={2.5}
-                      dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls={false} />
-                  ))}
+                  {category.exercises.map((ex, i) => {
+                    const lp = lineProps(ex.name)
+                    return (
+                      <Line key={ex.id} type="monotone" dataKey={`w_${ex.id}`} name={ex.name}
+                        stroke={COLORS[i % COLORS.length]} strokeWidth={lp.strokeWidth}
+                        dot={{ r: highlighted === ex.name ? 5 : highlighted ? 0 : 4 }}
+                        activeDot={{ r: 6 }} connectNulls={false}
+                        style={{ opacity: lp.opacity }} />
+                    )
+                  })}
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -156,14 +233,24 @@ function DualAxisSection({ category }: { category: DashboardCategoryData }) {
                   <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
                   <Tooltip labelFormatter={formatDateLong} formatter={(v: number, name: string) => [v, name]} />
                   <Legend
-                    formatter={(value: string) => <span className="text-xs">{value}</span>}
+                    onClick={handleLegendClick}
+                    formatter={(value: string) => (
+                      <span className={`text-xs cursor-pointer ${highlighted && value !== highlighted ? 'text-gray-300' : ''}`}>
+                        {value}
+                      </span>
+                    )}
                     wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
                   />
-                  {category.exercises.map((ex, i) => (
-                    <Line key={ex.id} type="monotone" dataKey={`r_${ex.id}`} name={ex.name}
-                      stroke={COLORS[i % COLORS.length]} strokeWidth={2.5}
-                      dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls={false} />
-                  ))}
+                  {category.exercises.map((ex, i) => {
+                    const lp = lineProps(ex.name)
+                    return (
+                      <Line key={ex.id} type="monotone" dataKey={`r_${ex.id}`} name={ex.name}
+                        stroke={COLORS[i % COLORS.length]} strokeWidth={lp.strokeWidth}
+                        dot={{ r: highlighted === ex.name ? 5 : highlighted ? 0 : 4 }}
+                        activeDot={{ r: 6 }} connectNulls={false}
+                        style={{ opacity: lp.opacity }} />
+                    )
+                  })}
                 </LineChart>
               </ResponsiveContainer>
             </div>
