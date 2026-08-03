@@ -9,6 +9,7 @@ import TrainingList from './pages/TrainingList'
 import TrainingForm from './pages/TrainingForm'
 import ExerciseList from './pages/ExerciseList'
 import ProgressPage from './pages/ProgressPage'
+import DashboardTest from './pages/DashboardTest'
 import type { AuthCheckResponse } from '../shared/types'
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
         <Route path="/trainings/:id/edit" element={<TrainingForm />} />
         <Route path="/exercises" element={<ExerciseList />} />
         <Route path="/progress/:exerciseId" element={<ProgressPage />} />
+        <Route path="/dashboard-test" element={<DashboardTest />} />
       </Route>
     </Routes>
   )
