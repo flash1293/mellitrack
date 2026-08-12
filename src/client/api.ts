@@ -16,6 +16,13 @@ import type {
   CreateExerciseRequest,
   UpdateExerciseRequest,
   TrainingExerciseInput,
+  Food,
+  CreateFoodRequest,
+  UpdateFoodRequest,
+  FoodEntryWithName,
+  CreateFoodEntryRequest,
+  UpdateFoodEntryRequest,
+  DailySummary,
 } from '../shared/types'
 
 const API_BASE = '/api'
@@ -88,4 +95,23 @@ export const api = {
   getProgress: (exerciseId: number) =>
     fetchApi<ExerciseProgressRow[]>(`/progress/${exerciseId}`),
   getAllProgress: () => fetchApi<AllProgressRow[]>('/progress'),
+
+  getFoods: () => fetchApi<Food[]>('/foods'),
+  createFood: (data: CreateFoodRequest) =>
+    fetchApi<SuccessResponse & { id?: number }>('/foods', { method: 'POST', body: JSON.stringify(data) }),
+  updateFood: (id: number, data: UpdateFoodRequest) =>
+    fetchApi<SuccessResponse>(`/foods/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFood: (id: number) =>
+    fetchApi<SuccessResponse>(`/foods/${id}`, { method: 'DELETE' }),
+
+  getFoodEntries: (date: string) =>
+    fetchApi<FoodEntryWithName[]>(`/food-entries?date=${date}`),
+  getDailySummary: (date: string) =>
+    fetchApi<DailySummary>(`/food-entries/summary?date=${date}`),
+  createFoodEntry: (data: CreateFoodEntryRequest) =>
+    fetchApi<SuccessResponse & { id?: number }>('/food-entries', { method: 'POST', body: JSON.stringify(data) }),
+  updateFoodEntry: (id: number, data: UpdateFoodEntryRequest) =>
+    fetchApi<SuccessResponse>(`/food-entries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFoodEntry: (id: number) =>
+    fetchApi<SuccessResponse>(`/food-entries/${id}`, { method: 'DELETE' }),
 }

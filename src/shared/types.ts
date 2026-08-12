@@ -279,6 +279,60 @@ export interface DraftData {
 }
 
 // --------------------------------------------------
+// Nutrition — API Types
+// --------------------------------------------------
+
+export interface Food {
+  id: number
+  user_id: number
+  name: string
+  calories_per_100g: number
+  created_at: string
+}
+
+export interface CreateFoodRequest {
+  name: string
+  calories_per_100g: number
+}
+
+export interface UpdateFoodRequest {
+  name: string
+  calories_per_100g: number
+}
+
+export interface FoodEntry {
+  id: number
+  user_id: number
+  food_id: number
+  amount_grams: number
+  consumed_at: string
+}
+
+export interface FoodEntryWithName extends FoodEntry {
+  food_name: string
+  calories_per_100g: number
+  calories: number
+}
+
+export interface CreateFoodEntryRequest {
+  food_id: number
+  amount_grams: number
+  consumed_at: string
+}
+
+export interface UpdateFoodEntryRequest {
+  food_id: number
+  amount_grams: number
+  consumed_at: string
+}
+
+export interface DailySummary {
+  date: string
+  entries: FoodEntryWithName[]
+  total_calories: number
+}
+
+// --------------------------------------------------
 // Client — Dashboard Types
 // --------------------------------------------------
 

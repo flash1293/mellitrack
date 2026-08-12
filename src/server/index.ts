@@ -6,6 +6,8 @@ import auth from './routes/auth'
 import exercises from './routes/exercises'
 import trainings from './routes/trainings'
 import progress from './routes/progress'
+import foods from './routes/foods'
+import foodEntries from './routes/food-entries'
 import { STATIC_ASSETS } from './static-manifest'
 
 export type Env = {
@@ -56,11 +58,15 @@ const authMiddleware: MiddlewareHandler<{ Bindings: Env; Variables: Variables }>
 app.use('/api/exercises/*', authMiddleware)
 app.use('/api/trainings/*', authMiddleware)
 app.use('/api/progress/*', authMiddleware)
+app.use('/api/foods/*', authMiddleware)
+app.use('/api/food-entries/*', authMiddleware)
 
 app.route('/api/auth', auth)
 app.route('/api/exercises', exercises)
 app.route('/api/trainings', trainings)
 app.route('/api/progress', progress)
+app.route('/api/foods', foods)
+app.route('/api/food-entries', foodEntries)
 
 // Serve static files for non-API routes
 app.get('*', (c) => {

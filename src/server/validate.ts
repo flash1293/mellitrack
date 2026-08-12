@@ -30,6 +30,15 @@ export function validateOptionalNumberArray(val: unknown, field: string): string
   return validateNumberArray(val, field)
 }
 
+export function validatePositiveNumber(val: unknown, field: string): string | null {
+  const numErr = validateNumber(val, field)
+  if (numErr) return numErr
+  if ((val as number) <= 0) {
+    return `${field} must be a positive number`
+  }
+  return null
+}
+
 export function validateNonEmptyArray(val: unknown, field: string): string | null {
   if (!Array.isArray(val) || val.length === 0) {
     return `${field} must be a non-empty array`

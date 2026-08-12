@@ -7,6 +7,8 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/trainings', label: 'Trainings', icon: '💪' },
   { path: '/exercises', label: 'Übungen', icon: '📝' },
+  { path: '/foods', label: 'Lebensmittel', icon: '🍎' },
+  { path: '/diary', label: 'Tagebuch', icon: '📔' },
 ]
 
 export default function Layout({ username }: { username: string }) {
