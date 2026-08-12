@@ -68,6 +68,12 @@ app.route('/api/progress', progress)
 app.route('/api/foods', foods)
 app.route('/api/food-entries', foodEntries)
 
+// Global error handler — catches unhandled exceptions and returns them as JSON
+app.onError((err, c) => {
+  console.error('Unhandled error:', err)
+  return c.json({ error: err.message || 'Internal Server Error' }, 500)
+})
+
 // Serve static files for non-API routes
 app.get('*', (c) => {
   const url = new URL(c.req.url)
