@@ -25,6 +25,7 @@ export default function FoodDiary() {
   const [selectedFoodId, setSelectedFoodId] = useState('')
   const [customName, setCustomName] = useState('')
   const [customCalories, setCustomCalories] = useState('')
+  const [customProtein, setCustomProtein] = useState('')
   const [amount, setAmount] = useState('')
 
   const isCustom = selectedFoodId === CUSTOM_VALUE
@@ -52,6 +53,7 @@ export default function FoodDiary() {
     setSelectedFoodId('')
     setCustomName('')
     setCustomCalories('')
+    setCustomProtein('')
     setAmount('')
     setShowForm(false)
   }
@@ -77,9 +79,18 @@ export default function FoodDiary() {
           setError('Bitte gültige Kalorien je 100g eingeben')
           return
         }
+        let prot: number | null = null
+        if (customProtein.trim() !== '') {
+          prot = parseFloat(customProtein.replace(',', '.'))
+          if (isNaN(prot) || prot <= 0) {
+            setError('Bitte gültige Eiweiß-Werte je 100g eingeben (oder leer lassen)')
+            return
+          }
+        }
         await api.createFoodEntry({
           custom_name: customName.trim(),
           custom_calories_per_100g: cal,
+          custom_protein_per_100g: prot,
           amount_grams: grams,
           consumed_at: consumedAt,
         })
@@ -163,8 +174,16 @@ export default function FoodDiary() {
         <>
           {/* Summary card */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-blue-700 mb-1">Gesamtkalorien</p>
-            <p className="text-3xl font-bold text-blue-800">{summary?.total_calories ?? 0} kcal</p>
+            <div className="flex gap-8">
+              <div>
+                <p className="text-sm text-blue-700 mb-1">Gesamtkalorien</p>
+                <p className="text-3xl font-bold text-blue-800">{summary?.total_calories ?? 0} kcal</p>
+              </div>
+              <div>
+                <p className="text-sm text-blue-700 mb-1">Eiweiß gesamt</p>
+                <p className="text-3xl font-bold text-blue-800">{summary?.total_protein ?? 0} g</p>
+              </div>
+            </div>
           </div>
 
           {/* Entries */}
@@ -179,7 +198,7 @@ export default function FoodDiary() {
                     <span className="font-medium">{entry.name}</span>
                     <span className="text-gray-500 ml-2">{entry.amount_grams}g</span>
                     <span className="text-gray-400 ml-2">
-                      ({entry.calories} kcal)
+                      ({entry.calories} kcal{entry.protein != null ? `, ${entry.protein} g Eiweiß` : ''})
                     </span>
                   </div>
                   <button
@@ -239,6 +258,19 @@ export default function FoodDiary() {
                         onKeyDown={handleKeyDown}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="z.B. 250"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Eiweiß je 100g (g, optional)</label>
+                      <input
+                        type="number"
+                        value={customProtein}
+                        onChange={(e) => setCustomProtein(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="z.B. 8"
                         step="0.1"
                         min="0"
                       />

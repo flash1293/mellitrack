@@ -287,17 +287,20 @@ export interface Food {
   user_id: number
   name: string
   calories_per_100g: number
+  protein_per_100g: number | null
   created_at: string
 }
 
 export interface CreateFoodRequest {
   name: string
   calories_per_100g: number
+  protein_per_100g?: number | null
 }
 
 export interface UpdateFoodRequest {
   name: string
   calories_per_100g: number
+  protein_per_100g?: number | null
 }
 
 export interface FoodEntry {
@@ -306,6 +309,7 @@ export interface FoodEntry {
   food_id: number | null
   custom_name: string | null
   custom_calories_per_100g: number | null
+  custom_protein_per_100g: number | null
   amount_grams: number
   consumed_at: string
 }
@@ -314,12 +318,15 @@ export interface FoodEntryWithName extends FoodEntry {
   name: string
   calories_per_100g: number
   calories: number
+  protein_per_100g: number | null
+  protein: number | null
 }
 
 export interface CreateFoodEntryRequest {
   food_id?: number | null
   custom_name?: string
   custom_calories_per_100g?: number
+  custom_protein_per_100g?: number | null
   amount_grams: number
   consumed_at: string
 }
@@ -328,6 +335,7 @@ export interface UpdateFoodEntryRequest {
   food_id?: number | null
   custom_name?: string
   custom_calories_per_100g?: number
+  custom_protein_per_100g?: number | null
   amount_grams: number
   consumed_at: string
 }
@@ -336,6 +344,7 @@ export interface DailySummary {
   date: string
   entries: FoodEntryWithName[]
   total_calories: number
+  total_protein: number
 }
 
 // --------------------------------------------------

@@ -11,6 +11,7 @@ export default function FoodManager() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [calories, setCalories] = useState('')
+  const [protein, setProtein] = useState('')
 
   const loadFoods = async () => {
     try {
@@ -28,6 +29,7 @@ export default function FoodManager() {
   const resetForm = () => {
     setName('')
     setCalories('')
+    setProtein('')
     setEditingId(null)
     setShowForm(false)
   }
@@ -35,6 +37,7 @@ export default function FoodManager() {
   const startEdit = (food: Food) => {
     setName(food.name)
     setCalories(String(food.calories_per_100g))
+    setProtein(food.protein_per_100g != null ? String(food.protein_per_100g) : '')
     setEditingId(food.id)
     setShowForm(true)
   }
@@ -50,8 +53,16 @@ export default function FoodManager() {
       setError('Kalorien müssen eine positive Zahl sein')
       return
     }
+    let protNum: number | null = null
+    if (protein.trim() !== '') {
+      protNum = parseFloat(protein.replace(',', '.'))
+      if (isNaN(protNum) || protNum <= 0) {
+        setError('Eiweiß muss eine positive Zahl sein (oder leer lassen)')
+        return
+      }
+    }
 
-    const data: CreateFoodRequest = { name: name.trim(), calories_per_100g: calNum }
+    const data: CreateFoodRequest = { name: name.trim(), calories_per_100g: calNum, protein_per_100g: protNum }
     try {
       if (editingId) {
         await api.updateFood(editingId, data)
@@ -127,6 +138,19 @@ export default function FoodManager() {
                 min="0"
               />
             </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Eiweiß pro 100g (g, optional)</label>
+              <input
+                type="number"
+                value={protein}
+                onChange={(e) => setProtein(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="z.B. 12"
+                step="0.1"
+                min="0"
+              />
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={handleSubmit}
@@ -157,6 +181,9 @@ export default function FoodManager() {
               <div>
                 <span className="font-medium">{food.name}</span>
                 <span className="text-gray-500 ml-3">{food.calories_per_100g} kcal / 100g</span>
+                {food.protein_per_100g != null && (
+                  <span className="text-gray-500 ml-2">{food.protein_per_100g} g Eiweiß / 100g</span>
+                )}
               </div>
               <div className="flex gap-2">
                 <button

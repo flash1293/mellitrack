@@ -39,6 +39,11 @@ export function validatePositiveNumber(val: unknown, field: string): string | nu
   return null
 }
 
+export function validateOptionalPositiveNumber(val: unknown, field: string): string | null {
+  if (val === undefined || val === null) return null
+  return validatePositiveNumber(val, field)
+}
+
 export function validateNonEmptyArray(val: unknown, field: string): string | null {
   if (!Array.isArray(val) || val.length === 0) {
     return `${field} must be a non-empty array`
