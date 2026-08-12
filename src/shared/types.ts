@@ -303,25 +303,31 @@ export interface UpdateFoodRequest {
 export interface FoodEntry {
   id: number
   user_id: number
-  food_id: number
+  food_id: number | null
+  custom_name: string | null
+  custom_calories_per_100g: number | null
   amount_grams: number
   consumed_at: string
 }
 
 export interface FoodEntryWithName extends FoodEntry {
-  food_name: string
+  name: string
   calories_per_100g: number
   calories: number
 }
 
 export interface CreateFoodEntryRequest {
-  food_id: number
+  food_id?: number | null
+  custom_name?: string
+  custom_calories_per_100g?: number
   amount_grams: number
   consumed_at: string
 }
 
 export interface UpdateFoodEntryRequest {
-  food_id: number
+  food_id?: number | null
+  custom_name?: string
+  custom_calories_per_100g?: number
   amount_grams: number
   consumed_at: string
 }

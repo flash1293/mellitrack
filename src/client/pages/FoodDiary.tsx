@@ -13,6 +13,8 @@ function formatDate(d: string): string {
   return `${day}.${m}.${y}`
 }
 
+const CUSTOM_VALUE = '__custom__'
+
 export default function FoodDiary() {
   const [date, setDate] = useState(todayStr())
   const [summary, setSummary] = useState<DailySummary | null>(null)
@@ -21,7 +23,11 @@ export default function FoodDiary() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [selectedFoodId, setSelectedFoodId] = useState('')
+  const [customName, setCustomName] = useState('')
+  const [customCalories, setCustomCalories] = useState('')
   const [amount, setAmount] = useState('')
+
+  const isCustom = selectedFoodId === CUSTOM_VALUE
 
   const loadData = async () => {
     setLoading(true)
@@ -44,17 +50,15 @@ export default function FoodDiary() {
 
   const resetForm = () => {
     setSelectedFoodId('')
+    setCustomName('')
+    setCustomCalories('')
     setAmount('')
     setShowForm(false)
   }
 
   const handleSubmit = async () => {
     setError('')
-    const foodId = parseInt(selectedFoodId)
-    if (!foodId || isNaN(foodId)) {
-      setError('Bitte Lebensmittel auswählen')
-      return
-    }
+
     const grams = parseFloat(amount.replace(',', '.'))
     if (isNaN(grams) || grams <= 0) {
       setError('Bitte gültige Gramm-Zahl eingeben')
@@ -63,7 +67,30 @@ export default function FoodDiary() {
     const consumedAt = `${date}T12:00:00`
 
     try {
-      await api.createFoodEntry({ food_id: foodId, amount_grams: grams, consumed_at: consumedAt })
+      if (isCustom) {
+        if (!customName.trim()) {
+          setError('Bitte Titel eingeben')
+          return
+        }
+        const cal = parseFloat(customCalories.replace(',', '.'))
+        if (isNaN(cal) || cal <= 0) {
+          setError('Bitte gültige Kalorien je 100g eingeben')
+          return
+        }
+        await api.createFoodEntry({
+          custom_name: customName.trim(),
+          custom_calories_per_100g: cal,
+          amount_grams: grams,
+          consumed_at: consumedAt,
+        })
+      } else {
+        const foodId = parseInt(selectedFoodId)
+        if (!foodId || isNaN(foodId)) {
+          setError('Bitte Lebensmittel auswählen')
+          return
+        }
+        await api.createFoodEntry({ food_id: foodId, amount_grams: grams, consumed_at: consumedAt })
+      }
       resetForm()
       await loadData()
     } catch (e) {
@@ -149,7 +176,7 @@ export default function FoodDiary() {
                   className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between"
                 >
                   <div>
-                    <span className="font-medium">{entry.food_name}</span>
+                    <span className="font-medium">{entry.name}</span>
                     <span className="text-gray-500 ml-2">{entry.amount_grams}g</span>
                     <span className="text-gray-400 ml-2">
                       ({entry.calories} kcal)
@@ -181,6 +208,7 @@ export default function FoodDiary() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Bitte wählen...</option>
+                    <option value={CUSTOM_VALUE}>✏️ Freier Eintrag</option>
                     {foods.map((f) => (
                       <option key={f.id} value={f.id}>
                         {f.name} ({f.calories_per_100g} kcal/100g)
@@ -188,21 +216,49 @@ export default function FoodDiary() {
                     ))}
                   </select>
                 </div>
+
+                {isCustom && (
+                  <>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Titel</label>
+                      <input
+                        type="text"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="z.B. Apfelkuchen"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Kalorien je 100g</label>
+                      <input
+                        type="number"
+                        value={customCalories}
+                        onChange={(e) => setCustomCalories(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="z.B. 250"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Menge (g)</label>
-                    <input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="z.B. 150"
-                      step="1"
-                      min="0"
-                      autoFocus
-                    />
-                  </div>
+                  <label className="block text-sm text-gray-600 mb-1">Menge (g)</label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="z.B. 150"
+                    step="1"
+                    min="0"
+                    autoFocus
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -224,8 +280,6 @@ export default function FoodDiary() {
             <button
               onClick={() => setShowForm(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              disabled={foods.length === 0}
-              title={foods.length === 0 ? 'Zuerst Lebensmittel erfassen' : undefined}
             >
               + Eintrag hinzufügen
             </button>
