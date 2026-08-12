@@ -22,7 +22,6 @@ export default function FoodDiary() {
   const [showForm, setShowForm] = useState(false)
   const [selectedFoodId, setSelectedFoodId] = useState('')
   const [amount, setAmount] = useState('')
-  const [time, setTime] = useState('12:00')
 
   const loadData = async () => {
     setLoading(true)
@@ -46,7 +45,6 @@ export default function FoodDiary() {
   const resetForm = () => {
     setSelectedFoodId('')
     setAmount('')
-    setTime('12:00')
     setShowForm(false)
   }
 
@@ -62,7 +60,7 @@ export default function FoodDiary() {
       setError('Bitte gültige Gramm-Zahl eingeben')
       return
     }
-    const consumedAt = `${date}T${time}:00`
+    const consumedAt = `${date}T12:00:00`
 
     try {
       await api.createFoodEntry({ food_id: foodId, amount_grams: grams, consumed_at: consumedAt })
@@ -156,9 +154,6 @@ export default function FoodDiary() {
                     <span className="text-gray-400 ml-2">
                       ({entry.calories} kcal)
                     </span>
-                    <span className="text-gray-400 ml-2 text-sm">
-                      {entry.consumed_at.slice(11, 16)}
-                    </span>
                   </div>
                   <button
                     onClick={() => handleDelete(entry.id)}
@@ -193,8 +188,8 @@ export default function FoodDiary() {
                     ))}
                   </select>
                 </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
+                <div>
+                  <div>
                     <label className="block text-sm text-gray-600 mb-1">Menge (g)</label>
                     <input
                       type="number"
@@ -206,15 +201,6 @@ export default function FoodDiary() {
                       step="1"
                       min="0"
                       autoFocus
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Uhrzeit</label>
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
