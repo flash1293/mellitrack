@@ -22,6 +22,7 @@ export default function FoodDiary() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [selectedFoodId, setSelectedFoodId] = useState('')
   const [customName, setCustomName] = useState('')
   const [customCalories, setCustomCalories] = useState('')
@@ -55,7 +56,26 @@ export default function FoodDiary() {
     setCustomCalories('')
     setCustomProtein('')
     setAmount('')
+    setEditingId(null)
     setShowForm(false)
+  }
+
+  const startEdit = (entry: FoodEntryWithName) => {
+    setError('')
+    if (entry.food_id != null) {
+      setSelectedFoodId(String(entry.food_id))
+      setCustomName('')
+      setCustomCalories('')
+      setCustomProtein('')
+    } else {
+      setSelectedFoodId(CUSTOM_VALUE)
+      setCustomName(entry.custom_name ?? '')
+      setCustomCalories(entry.custom_calories_per_100g != null ? String(entry.custom_calories_per_100g) : '')
+      setCustomProtein(entry.custom_protein_per_100g != null ? String(entry.custom_protein_per_100g) : '')
+    }
+    setAmount(String(entry.amount_grams))
+    setEditingId(entry.id)
+    setShowForm(true)
   }
 
   const handleSubmit = async () => {
@@ -87,20 +107,30 @@ export default function FoodDiary() {
             return
           }
         }
-        await api.createFoodEntry({
+        const payload = {
           custom_name: customName.trim(),
           custom_calories_per_100g: cal,
           custom_protein_per_100g: prot,
           amount_grams: grams,
           consumed_at: consumedAt,
-        })
+        }
+        if (editingId != null) {
+          await api.updateFoodEntry(editingId, payload)
+        } else {
+          await api.createFoodEntry(payload)
+        }
       } else {
         const foodId = parseInt(selectedFoodId)
         if (!foodId || isNaN(foodId)) {
           setError('Bitte Lebensmittel auswählen')
           return
         }
-        await api.createFoodEntry({ food_id: foodId, amount_grams: grams, consumed_at: consumedAt })
+        const payload = { food_id: foodId, amount_grams: grams, consumed_at: consumedAt }
+        if (editingId != null) {
+          await api.updateFoodEntry(editingId, payload)
+        } else {
+          await api.createFoodEntry(payload)
+        }
       }
       resetForm()
       await loadData()
@@ -201,12 +231,22 @@ export default function FoodDiary() {
                       ({entry.calories} kcal{entry.protein != null ? `, ${entry.protein} g Eiweiß` : ''})
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleDelete(entry.id)}
-                    className="text-sm text-red-600 hover:text-red-800"
-                  >
-                    🗑️
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEdit(entry)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                      aria-label="Bearbeiten"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleDelete(entry.id)}
+                      className="text-sm text-red-600 hover:text-red-800"
+                      aria-label="Löschen"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -217,7 +257,7 @@ export default function FoodDiary() {
           {/* Add form */}
           {showForm ? (
             <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 className="font-semibold mb-3">Eintrag hinzufügen</h3>
+              <h3 className="font-semibold mb-3">{editingId != null ? 'Eintrag bearbeiten' : 'Eintrag hinzufügen'}</h3>
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Lebensmittel</label>
@@ -297,7 +337,7 @@ export default function FoodDiary() {
                     onClick={handleSubmit}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Hinzufügen
+                    {editingId != null ? 'Speichern' : 'Hinzufügen'}
                   </button>
                   <button
                     onClick={resetForm}
