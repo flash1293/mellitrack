@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api'
-import type { Food, FoodEntryWithName, DailySummary } from '../../shared/types'
+import type { Food, FoodEntryWithName, DailySummary, AverageSummary } from '../../shared/types'
 import ErrorBanner from '../components/ui/ErrorBanner'
 
 function todayStr(): string {
@@ -18,6 +18,7 @@ const CUSTOM_VALUE = '__custom__'
 export default function FoodDiary() {
   const [date, setDate] = useState(todayStr())
   const [summary, setSummary] = useState<DailySummary | null>(null)
+  const [average, setAverage] = useState<AverageSummary | null>(null)
   const [foods, setFoods] = useState<Food[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -35,12 +36,14 @@ export default function FoodDiary() {
     setLoading(true)
     setError('')
     try {
-      const [sum, foodList] = await Promise.all([
+      const [sum, foodList, avg] = await Promise.all([
         api.getDailySummary(date),
         api.getFoods(),
+        api.getAverageSummary(date),
       ])
       setSummary(sum)
       setFoods(foodList)
+      setAverage(avg)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -203,7 +206,7 @@ export default function FoodDiary() {
       ) : (
         <>
           {/* Summary card */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <div className="flex gap-8">
               <div>
                 <p className="text-sm text-blue-700 mb-1">Gesamtkalorien</p>
@@ -215,6 +218,28 @@ export default function FoodDiary() {
               </div>
             </div>
           </div>
+
+          {/* 7-day average */}
+          {average && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-gray-600 mb-1">
+                Ø letzte 7 Tage
+                {average.days_with_entries > 0 && (
+                  <span className="ml-1">({average.days_with_entries} {average.days_with_entries === 1 ? 'Tag' : 'Tage'} erfasst)</span>
+                )}
+              </p>
+              <div className="flex gap-8">
+                <div>
+                  <p className="text-2xl font-semibold text-gray-800">{average.average_calories} kcal</p>
+                  <p className="text-xs text-gray-500">pro Tag</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-gray-800">{average.average_protein} g</p>
+                  <p className="text-xs text-gray-500">Eiweiß pro Tag</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Entries */}
           {summary && summary.entries.length > 0 ? (

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env, Variables } from '../index'
-import type { FoodEntryWithName, DailySummary } from '../../shared/types'
+import type { FoodEntryWithName, DailySummary, AverageSummary } from '../../shared/types'
 import { validateString, validatePositiveNumber, validateOptionalPositiveNumber } from '../validate'
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
@@ -53,6 +53,39 @@ app.get('/summary', async (c) => {
 
   const summary: DailySummary = { date, entries, total_calories, total_protein }
   return c.json(summary)
+})
+
+// GET /api/food-entries/average?date=YYYY-MM-DD — 7-day rolling average
+app.get('/average', async (c) => {
+  const db = c.env.DB
+  const userId = c.get('userId')
+  const date = c.req.query('date')
+
+  if (!date) return c.json({ error: 'date query parameter required' }, 400)
+
+  const { results } = await db.prepare(`
+    SELECT
+      DATE(fe.consumed_at) as day,
+      SUM(fe.amount_grams * COALESCE(fe.custom_calories_per_100g, f.calories_per_100g) / 100.0) as day_calories,
+      SUM(fe.amount_grams * COALESCE(fe.custom_protein_per_100g, f.protein_per_100g) / 100.0) as day_protein
+    FROM food_entries fe
+    LEFT JOIN foods f ON fe.food_id = f.id
+    WHERE fe.user_id = ? AND DATE(fe.consumed_at) BETWEEN date(?, '-6 days') AND ?
+    GROUP BY DATE(fe.consumed_at)
+  `).bind(userId, date, date).all()
+
+  const rows = results as unknown as { day: string; day_calories: number | null; day_protein: number | null }[]
+  const daysWithEntries = rows.length
+  const totalCalories = rows.reduce((s, r) => s + (r.day_calories ?? 0), 0)
+  const totalProtein = rows.reduce((s, r) => s + (r.day_protein ?? 0), 0)
+
+  const avg: AverageSummary = {
+    days: 7,
+    days_with_entries: daysWithEntries,
+    average_calories: Math.round(totalCalories / 7),
+    average_protein: Math.round(totalProtein / 7),
+  }
+  return c.json(avg)
 })
 
 app.post('/', async (c) => {

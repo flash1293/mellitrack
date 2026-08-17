@@ -23,6 +23,7 @@ import type {
   CreateFoodEntryRequest,
   UpdateFoodEntryRequest,
   DailySummary,
+  AverageSummary,
 } from '../shared/types'
 
 const API_BASE = '/api'
@@ -108,6 +109,8 @@ export const api = {
     fetchApi<FoodEntryWithName[]>(`/food-entries?date=${date}`),
   getDailySummary: (date: string) =>
     fetchApi<DailySummary>(`/food-entries/summary?date=${date}`),
+  getAverageSummary: (date: string) =>
+    fetchApi<AverageSummary>(`/food-entries/average?date=${date}`),
   createFoodEntry: (data: CreateFoodEntryRequest) =>
     fetchApi<SuccessResponse & { id?: number }>('/food-entries', { method: 'POST', body: JSON.stringify(data) }),
   updateFoodEntry: (id: number, data: UpdateFoodEntryRequest) =>

@@ -347,6 +347,13 @@ export interface DailySummary {
   total_protein: number
 }
 
+export interface AverageSummary {
+  days: number
+  days_with_entries: number
+  average_calories: number
+  average_protein: number
+}
+
 // --------------------------------------------------
 // Client — Dashboard Types
 // --------------------------------------------------
