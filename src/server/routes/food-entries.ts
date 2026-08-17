@@ -5,16 +5,16 @@ import { validateString, validatePositiveNumber, validateOptionalPositiveNumber 
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
-// Returns the ISO week (Monday–Sunday) that contains the given YYYY-MM-DD date.
-function isoWeekRange(date: string): { monday: string; sunday: string } {
+// Returns the Sunday–Saturday week that contains the given YYYY-MM-DD date.
+function isoWeekRange(date: string): { week_start: string; week_end: string } {
   const d = new Date(`${date}T00:00:00Z`)
   const dow = d.getUTCDay() // 0=Sun .. 6=Sat
-  const daysFromMonday = (dow + 6) % 7 // Mon=0 .. Sun=6
-  const monday = new Date(d.getTime() - daysFromMonday * 86400000)
-  const sunday = new Date(monday.getTime() + 6 * 86400000)
+  const daysFromSunday = dow // Sun=0 .. Sat=6
+  const weekStart = new Date(d.getTime() - daysFromSunday * 86400000)
+  const weekEnd = new Date(weekStart.getTime() + 6 * 86400000)
   return {
-    monday: monday.toISOString().slice(0, 10),
-    sunday: sunday.toISOString().slice(0, 10),
+    week_start: weekStart.toISOString().slice(0, 10),
+    week_end: weekEnd.toISOString().slice(0, 10),
   }
 }
 
@@ -68,7 +68,7 @@ app.get('/summary', async (c) => {
   return c.json(summary)
 })
 
-// GET /api/food-entries/average?date=YYYY-MM-DD — average over the calendar week (Mon–Sun) containing the date
+// GET /api/food-entries/average?date=YYYY-MM-DD — average over the Sunday–Saturday week containing the date
 app.get('/average', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
@@ -76,7 +76,7 @@ app.get('/average', async (c) => {
 
   if (!date) return c.json({ error: 'date query parameter required' }, 400)
 
-  const { monday, sunday } = isoWeekRange(date)
+  const { week_start, week_end } = isoWeekRange(date)
 
   const { results } = await db.prepare(`
     SELECT
@@ -87,7 +87,7 @@ app.get('/average', async (c) => {
     LEFT JOIN foods f ON fe.food_id = f.id
     WHERE fe.user_id = ? AND DATE(fe.consumed_at) BETWEEN ? AND ?
     GROUP BY DATE(fe.consumed_at)
-  `).bind(userId, monday, sunday).all()
+  `).bind(userId, week_start, week_end).all()
 
   const rows = results as unknown as { day: string; day_calories: number | null; day_protein: number | null }[]
   const daysWithEntries = rows.length
@@ -99,8 +99,8 @@ app.get('/average', async (c) => {
     days_with_entries: daysWithEntries,
     average_calories: Math.round(totalCalories / 7),
     average_protein: Math.round(totalProtein / 7),
-    week_start: monday,
-    week_end: sunday,
+    week_start,
+    week_end,
   }
   return c.json(avg)
 })

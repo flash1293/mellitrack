@@ -219,11 +219,11 @@ export default function FoodDiary() {
             </div>
           </div>
 
-          {/* Calendar week average */}
+          {/* Weekly average (Sunday–Saturday, matching fitness tracker) */}
           {average && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-600 mb-1">
-                Ø Kalenderwoche ({formatDate(average.week_start)} – {formatDate(average.week_end)})
+                Ø Wochenwert · {formatDate(average.week_start)} – {formatDate(average.week_end)} (So–Sa)
                 {average.days_with_entries > 0 && (
                   <span className="ml-1">· {average.days_with_entries} {average.days_with_entries === 1 ? 'Tag' : 'Tage'} erfasst</span>
                 )}
