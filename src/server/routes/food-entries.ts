@@ -93,12 +93,13 @@ app.get('/average', async (c) => {
   const daysWithEntries = rows.length
   const totalCalories = rows.reduce((s, r) => s + (r.day_calories ?? 0), 0)
   const totalProtein = rows.reduce((s, r) => s + (r.day_protein ?? 0), 0)
+  const divisor = daysWithEntries > 0 ? daysWithEntries : 1
 
   const avg: AverageSummary = {
-    days: 7,
+    days: divisor,
     days_with_entries: daysWithEntries,
-    average_calories: Math.round(totalCalories / 7),
-    average_protein: Math.round(totalProtein / 7),
+    average_calories: Math.round(totalCalories / divisor),
+    average_protein: Math.round(totalProtein / divisor),
     week_start,
     week_end,
   }

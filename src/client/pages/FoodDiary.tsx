@@ -231,11 +231,11 @@ export default function FoodDiary() {
               <div className="flex gap-8">
                 <div>
                   <p className="text-2xl font-semibold text-gray-800">{average.average_calories} kcal</p>
-                  <p className="text-xs text-gray-500">pro Tag</p>
+                  <p className="text-xs text-gray-500">Ø pro erfasstem Tag</p>
                 </div>
                 <div>
                   <p className="text-2xl font-semibold text-gray-800">{average.average_protein} g</p>
-                  <p className="text-xs text-gray-500">Eiweiß pro Tag</p>
+                  <p className="text-xs text-gray-500">Eiweiß Ø pro erfasstem Tag</p>
                 </div>
               </div>
             </div>
