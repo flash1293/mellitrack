@@ -219,13 +219,13 @@ export default function FoodDiary() {
             </div>
           </div>
 
-          {/* 7-day average */}
+          {/* Calendar week average */}
           {average && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-600 mb-1">
-                Ø letzte 7 Tage
+                Ø Kalenderwoche ({formatDate(average.week_start)} – {formatDate(average.week_end)})
                 {average.days_with_entries > 0 && (
-                  <span className="ml-1">({average.days_with_entries} {average.days_with_entries === 1 ? 'Tag' : 'Tage'} erfasst)</span>
+                  <span className="ml-1">· {average.days_with_entries} {average.days_with_entries === 1 ? 'Tag' : 'Tage'} erfasst</span>
                 )}
               </p>
               <div className="flex gap-8">

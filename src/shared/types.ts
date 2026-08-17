@@ -352,6 +352,8 @@ export interface AverageSummary {
   days_with_entries: number
   average_calories: number
   average_protein: number
+  week_start: string
+  week_end: string
 }
 
 // --------------------------------------------------

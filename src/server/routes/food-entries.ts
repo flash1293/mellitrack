@@ -5,6 +5,19 @@ import { validateString, validatePositiveNumber, validateOptionalPositiveNumber 
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
+// Returns the ISO week (Monday–Sunday) that contains the given YYYY-MM-DD date.
+function isoWeekRange(date: string): { monday: string; sunday: string } {
+  const d = new Date(`${date}T00:00:00Z`)
+  const dow = d.getUTCDay() // 0=Sun .. 6=Sat
+  const daysFromMonday = (dow + 6) % 7 // Mon=0 .. Sun=6
+  const monday = new Date(d.getTime() - daysFromMonday * 86400000)
+  const sunday = new Date(monday.getTime() + 6 * 86400000)
+  return {
+    monday: monday.toISOString().slice(0, 10),
+    sunday: sunday.toISOString().slice(0, 10),
+  }
+}
+
 const ENTRY_SELECT = `
   SELECT fe.*,
     COALESCE(fe.custom_name, f.name) as name,
@@ -55,13 +68,15 @@ app.get('/summary', async (c) => {
   return c.json(summary)
 })
 
-// GET /api/food-entries/average?date=YYYY-MM-DD — 7-day rolling average
+// GET /api/food-entries/average?date=YYYY-MM-DD — average over the calendar week (Mon–Sun) containing the date
 app.get('/average', async (c) => {
   const db = c.env.DB
   const userId = c.get('userId')
   const date = c.req.query('date')
 
   if (!date) return c.json({ error: 'date query parameter required' }, 400)
+
+  const { monday, sunday } = isoWeekRange(date)
 
   const { results } = await db.prepare(`
     SELECT
@@ -70,9 +85,9 @@ app.get('/average', async (c) => {
       SUM(fe.amount_grams * COALESCE(fe.custom_protein_per_100g, f.protein_per_100g) / 100.0) as day_protein
     FROM food_entries fe
     LEFT JOIN foods f ON fe.food_id = f.id
-    WHERE fe.user_id = ? AND DATE(fe.consumed_at) BETWEEN date(?, '-6 days') AND ?
+    WHERE fe.user_id = ? AND DATE(fe.consumed_at) BETWEEN ? AND ?
     GROUP BY DATE(fe.consumed_at)
-  `).bind(userId, date, date).all()
+  `).bind(userId, monday, sunday).all()
 
   const rows = results as unknown as { day: string; day_calories: number | null; day_protein: number | null }[]
   const daysWithEntries = rows.length
@@ -84,6 +99,8 @@ app.get('/average', async (c) => {
     days_with_entries: daysWithEntries,
     average_calories: Math.round(totalCalories / 7),
     average_protein: Math.round(totalProtein / 7),
+    week_start: monday,
+    week_end: sunday,
   }
   return c.json(avg)
 })
